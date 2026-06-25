@@ -10,3 +10,8 @@ from src.models.professional_profile import ProfessionalProfile
 from src.models.education import Education
 from src.models.career_history import CareerHistory
 from src.models.source_registry import SourceRegistry
+from src.models.associations import (
+    profile_skill,
+    profile_certification,
+    company_industry,
+)

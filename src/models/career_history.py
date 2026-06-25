@@ -3,7 +3,7 @@ from sqlalchemy import (
     Integer,
     ForeignKey,
 )
-
+from sqlalchemy import Index
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -17,6 +17,12 @@ from src.utils.uuid_utils import generate_uuid
 
 class CareerHistory(Base, TimestampMixin):
     __tablename__ = "career_history"
+    __table_args__ = (
+    Index(
+        "idx_role_title",
+        "role_title",
+    ),
+)
 
     id: Mapped[str] = mapped_column(
         primary_key=True,

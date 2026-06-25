@@ -1,6 +1,7 @@
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from sqlalchemy import Index
+from src.models.associations import company_industry
 from src.db.base import Base
 from src.models.mixins import TimestampMixin
 from src.utils.uuid_utils import generate_uuid
@@ -8,6 +9,9 @@ from src.utils.uuid_utils import generate_uuid
 
 class Company(Base, TimestampMixin):
     __tablename__ = "company"
+    __table_args__ = (
+        Index("idx_company_name", "name"),
+    )
 
     id: Mapped[str] = mapped_column(
         primary_key=True,
@@ -29,3 +33,8 @@ class Company(Base, TimestampMixin):
     )
 
     location = relationship("Location")
+    industries = relationship(
+        "Industry",
+        secondary=company_industry,
+        back_populates="companies",
+    )

@@ -1,5 +1,9 @@
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from src.db.base import Base
 from src.utils.uuid_utils import generate_uuid
@@ -18,6 +22,11 @@ class Industry(Base):
         unique=True,
         nullable=False,
     )
+    companies = relationship(
+        "Company",
+        secondary="company_industry",
+        back_populates="industries",
+    )
 
 
 class Certification(Base):
@@ -33,6 +42,11 @@ class Certification(Base):
         unique=True,
         nullable=False,
     )
+    professionals = relationship(
+        "ProfessionalProfile",
+        secondary="profile_certification",
+        back_populates="certifications",
+    )
 
 
 class Skill(Base):
@@ -47,6 +61,11 @@ class Skill(Base):
         String(255),
         unique=True,
         nullable=False,
+    )
+    professionals = relationship(
+        "ProfessionalProfile",
+        secondary="profile_skill",
+        back_populates="skills",
     )
 
 
