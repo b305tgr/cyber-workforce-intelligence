@@ -1,3 +1,4 @@
+from src.models.import_history import ImportHistory
 from src.models.reference import (
     Industry,
     Certification,

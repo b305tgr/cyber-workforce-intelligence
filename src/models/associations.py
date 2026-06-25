@@ -2,11 +2,9 @@ from sqlalchemy import (
     Table,
     Column,
     ForeignKey,
-    UniqueConstraint,
 )
 
 from src.db.base import Base
-
 
 profile_skill = Table(
     "profile_skill",
@@ -21,13 +19,8 @@ profile_skill = Table(
         ForeignKey("skill.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    UniqueConstraint(
-        "professional_id",
-        "skill_id",
-        name="uq_profile_skill",
-    ),
+    
 )
-
 
 profile_certification = Table(
     "profile_certification",
@@ -42,11 +35,7 @@ profile_certification = Table(
         ForeignKey("certification.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    UniqueConstraint(
-        "professional_id",
-        "certification_id",
-        name="uq_profile_certification",
-    ),
+    
 )
 
 
@@ -63,9 +52,5 @@ company_industry = Table(
         ForeignKey("industry.id", ondelete="CASCADE"),
         primary_key=True,
     ),
-    UniqueConstraint(
-        "company_id",
-        "industry_id",
-        name="uq_company_industry",
-    ),
+    
 )

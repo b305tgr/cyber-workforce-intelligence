@@ -1,30 +1,32 @@
 from sqlalchemy.orm import Session
 
-from src.models.professional_profile import (
-    ProfessionalProfile,
-)
+from src.models.professional_profile import ProfessionalProfile
 
 
 class ProfessionalRepository:
+
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_id(self, profile_id: str):
+    def add(self, professional: ProfessionalProfile):
+        self.db.add(professional)
+        self.db.commit()
+        self.db.refresh(professional)
+        return professional
+
+    def find_by_name(self, full_name: str):
+
         return (
             self.db.query(ProfessionalProfile)
             .filter(
-                ProfessionalProfile.id == profile_id
+                ProfessionalProfile.full_name == full_name
             )
             .first()
         )
 
-    def get_by_name(self, name: str):
+    def list_all(self):
+
         return (
             self.db.query(ProfessionalProfile)
-            .filter(
-                ProfessionalProfile.full_name.ilike(
-                    f"%{name}%"
-                )
-            )
             .all()
         )
