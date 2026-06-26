@@ -30,3 +30,28 @@ class ProfessionalRepository:
             self.db.query(ProfessionalProfile)
             .all()
         )
+
+    def get_by_id(
+        self,
+        professional_id: str,
+    ):
+
+        return (
+            self.db.query(ProfessionalProfile)
+            .filter(
+                ProfessionalProfile.id == professional_id
+            )
+            .first()
+        )
+
+    def update(self, professional: ProfessionalProfile):
+
+        self.db.commit()
+        self.db.refresh(professional)
+
+        return professional
+
+    def delete(self, professional: ProfessionalProfile):
+
+        self.db.delete(professional)
+        self.db.commit()

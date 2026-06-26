@@ -37,3 +37,31 @@ class ProfessionalService:
     def get_all_professionals(self):
 
         return self.repository.list_all()
+
+    def get_professional_by_id(
+        self,
+        professional_id: str,
+    ):
+
+        return self.repository.get_by_id(professional_id)
+
+    def update_professional(
+        self,
+        professional_id: str,
+        payload: ProfessionalCreate,
+    ):
+
+        professional = self.repository.get_by_id(
+            professional_id
+        )
+
+        if professional is None:
+            return None
+
+        professional.full_name = payload.full_name
+        professional.current_title = payload.current_title
+        professional.years_experience = payload.years_experience
+        professional.current_company_id = payload.current_company_id
+        professional.location_id = payload.location_id
+
+        return self.repository.update(professional)
