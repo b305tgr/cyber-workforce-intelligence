@@ -43,7 +43,9 @@ class ProfessionalService:
         professional_id: str,
     ):
 
-        return self.repository.get_by_id(professional_id)
+        return self.repository.get_by_id(
+            professional_id
+        )
 
     def update_professional(
         self,
@@ -64,4 +66,24 @@ class ProfessionalService:
         professional.current_company_id = payload.current_company_id
         professional.location_id = payload.location_id
 
-        return self.repository.update(professional)
+        return self.repository.update(
+            professional
+        )
+
+    def delete_professional(
+        self,
+        professional_id: str,
+    ):
+
+        professional = self.repository.get_by_id(
+            professional_id
+        )
+
+        if professional is None:
+            return False
+
+        self.repository.delete(
+            professional
+        )
+
+        return True

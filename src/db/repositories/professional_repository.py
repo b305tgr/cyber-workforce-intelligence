@@ -44,14 +44,20 @@ class ProfessionalRepository:
             .first()
         )
 
-    def update(self, professional: ProfessionalProfile):
+    def update(
+        self,
+        professional: ProfessionalProfile,
+    ):
 
         self.db.commit()
         self.db.refresh(professional)
 
         return professional
 
-    def delete(self, professional: ProfessionalProfile):
+    def delete(
+        self,
+        professional: ProfessionalProfile,
+    ):
 
         self.db.delete(professional)
         self.db.commit()

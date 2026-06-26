@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from src.api.dependencies import get_db
@@ -89,3 +89,27 @@ def update_professional(
         )
 
     return professional
+
+
+@router.delete(
+    "/{professional_id}",
+    status_code=204,
+)
+def delete_professional(
+    professional_id: str,
+    db: Session = Depends(get_db),
+):
+
+    service = ProfessionalService(db)
+
+    deleted = service.delete_professional(
+        professional_id
+    )
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Professional not found",
+        )
+
+    return Response(status_code=204)
