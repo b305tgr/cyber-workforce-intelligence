@@ -34,3 +34,13 @@ class ImportHistoryService:
         self.db.refresh(history)
 
         return history
+
+    def list_all(self):
+
+        return (
+            self.db.query(ImportHistory)
+            .order_by(
+                ImportHistory.imported_at.desc()
+            )
+            .all()
+        )
