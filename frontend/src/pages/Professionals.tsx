@@ -18,31 +18,70 @@ import type { Professional } from "../types/professional";
 
 import {
   getProfessionals,
+  deleteProfessional,
 } from "../services/professionalService";
+
+import ProfessionalDialog from "../components/ProfessionalDialog";
 
 export default function Professionals() {
 
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [search, setSearch] = useState("");
+  const [professionals, setProfessionals] =
+    useState<Professional[]>([]);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [dialogOpen, setDialogOpen] =
+    useState(false);
+
+  async function loadProfessionals() {
+
+    const data =
+      await getProfessionals();
+
+    setProfessionals(data);
+
+  }
+
+  async function handleDelete(
+    id: string,
+  ) {
+
+    const confirmed =
+      window.confirm(
+        "Delete this professional?"
+      );
+
+    if (!confirmed) return;
+
+    await deleteProfessional(id);
+
+    await loadProfessionals();
+
+  }
 
   useEffect(() => {
-    getProfessionals().then(setProfessionals);
+
+    loadProfessionals();
+
   }, []);
 
   const filtered = useMemo(() => {
 
-    const text = search.toLowerCase();
+    const text =
+      search.toLowerCase();
 
-    return professionals.filter((p) => {
+    return professionals.filter((p) =>
 
-      return (
-        p.full_name.toLowerCase().includes(text) ||
-        (p.current_title ?? "")
-          .toLowerCase()
-          .includes(text)
-      );
+      p.full_name
+        .toLowerCase()
+        .includes(text) ||
 
-    });
+      (p.current_title ?? "")
+        .toLowerCase()
+        .includes(text)
+
+    );
 
   }, [professionals, search]);
 
@@ -67,13 +106,18 @@ export default function Professionals() {
           label="Search Professional"
           value={search}
           onChange={(e) =>
-            setSearch(e.target.value)
+            setSearch(
+              e.target.value
+            )
           }
           fullWidth
         />
 
         <Button
           variant="contained"
+          onClick={() =>
+            setDialogOpen(true)
+          }
         >
           Add
         </Button>
@@ -112,7 +156,9 @@ export default function Professionals() {
 
             {filtered.map((professional) => (
 
-              <TableRow key={professional.id}>
+              <TableRow
+                key={professional.id}
+              >
 
                 <TableCell>
                   {professional.full_name}
@@ -141,8 +187,13 @@ export default function Professionals() {
                   </Button>
 
                   <Button
-                    color="error"
                     size="small"
+                    color="error"
+                    onClick={() =>
+                      handleDelete(
+                        professional.id
+                      )
+                    }
                   >
                     Delete
                   </Button>
@@ -158,6 +209,20 @@ export default function Professionals() {
         </Table>
 
       </Paper>
+
+      <ProfessionalDialog
+
+        open={dialogOpen}
+
+        onClose={() =>
+          setDialogOpen(false)
+        }
+
+        onSaved={
+          loadProfessionals
+        }
+
+      />
 
     </Container>
 

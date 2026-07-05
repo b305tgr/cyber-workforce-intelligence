@@ -2,26 +2,49 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 
-type SummaryCardProps = {
+type Props = {
+
   title: string;
+
   value: number;
+
 };
 
 export default function SummaryCard({
+
   title,
+
   value,
-}: SummaryCardProps) {
+
+}: Props) {
+
   return (
-    <Card sx={{ minWidth: 220 }}>
+
+    <Card
+      sx={{
+        width: 220,
+      }}
+    >
+
       <CardContent>
-        <Typography variant="h6" gutterBottom>
+
+        <Typography
+          variant="subtitle1"
+          color="text.secondary"
+        >
           {title}
         </Typography>
 
-        <Typography variant="h3">
+        <Typography
+          variant="h3"
+        >
           {value}
         </Typography>
+
       </CardContent>
+
     </Card>
+
   );
+
 }
