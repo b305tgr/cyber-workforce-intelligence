@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fbf5ed">
+  <title>Midnight Signal</title>
+  <link rel="icon" type="image/png" href="/assets/midnight-signal-logo.png">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to conversation</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <a class="brand" href="/" aria-label="Midnight Signal home">
+          <span class="brand-mark"><span></span></span>
+          <span class="brand-name">midnight<span>signal</span></span>
+        </a>
+        <button class="icon-button sidebar-collapse" id="collapse-sidebar" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="3"></rect><path d="M9 4v16"></path><path d="m14 9 3 3-3 3"></path></svg>
+        </button>
+      </div>
+
+      <button class="new-chat" id="new-chat">
+        <span class="plus">+</span>
+        <span>New chat</span>
+        <span class="shortcut">Ctrl K</span>
+      </button>
+
+      <div class="sidebar-label">YOUR CONVERSATIONS</div>
+      <label class="history-search"><span aria-hidden="true">⌕</span><input id="history-search" type="search" placeholder="Search chats and messages" aria-label="Search chats and messages"></label>
+      <label class="history-filter"><span>Show</span><select id="history-filter" aria-label="Filter conversations"><option value="active">Active</option><option value="pinned">Pinned</option><option value="archived">Archived</option><option value="all">All chats</option></select></label>
+      <nav class="conversation-list" id="conversation-list" aria-label="Recent conversations"></nav>
+
+      <nav class="sidebar-site-links" aria-label="Project information">
+        <a href="/about">About Midnight Signal</a>
+        <a href="/contact">Contact &amp; feedback</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="local-status"><span class="status-dot"></span><span id="server-status">Connecting to local model...</span></div>
+        <div class="sidebar-credit"><span class="credit-mark">A</span><span>Engineered by <strong>Aditya Tomar</strong></span></div>
+      </div>
+    </aside>
+
+    <main class="main-panel" id="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button show-sidebar" id="show-sidebar" aria-label="Show sidebar" title="Show sidebar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="3"></rect><path d="M9 4v16"></path></svg>
+          </button>
+          <div class="current-mode">
+            <span class="mode-pulse"></span>
+            <select id="mode-select" aria-label="Conversation mode"></select>
+            <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"></path></svg>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="workspace-pill" id="workspace-pill" type="button" title="Copy workspace path">
+            <span class="workspace-dot"></span><span id="workspace-name">Workspace</span>
+          </button>
+          <button class="icon-button workspace-browser-button" id="workspace-browser-button" type="button" aria-label="Browse workspace files" title="Browse workspace files">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7.5v-2a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2"></path></svg>
+          </button>
+          <button class="icon-button mobile-access-button" id="mobile-access-button" type="button" aria-label="Connect phone" title="Connect a phone on your private Wi-Fi">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.8" width="10" height="18.4" rx="2"></rect><path d="M10 5.7h4M11 18.2h2"></path></svg>
+          </button>
+          <button class="icon-button export-chat" id="export-chat" type="button" aria-label="Export conversation" title="Export conversation as Markdown" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"></path><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path></svg>
+          </button>
+          <button class="icon-button settings-button" id="settings-button" type="button" aria-label="Open settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.7 2.95-.09-.03a1.7 1.7 0 0 0-1.86.35l-.07.06h-3.4l-.03-.09a1.7 1.7 0 0 0-1.45-1.15l-.1-.01-1.7-2.95.06-.07A1.7 1.7 0 0 0 9.4 14l-.02-.1v-3.4l.09-.03a1.7 1.7 0 0 0 1.15-1.45l.01-.1 2.95-1.7.07.06A1.7 1.7 0 0 0 15.4 7l.1-.02h3.4l.03.09a1.7 1.7 0 0 0 1.45 1.15l.1.01 1.7 2.95-.06.07A1.7 1.7 0 0 0 22 13.1l.02.1z" transform="translate(-3.5 -1.5) scale(.92)"></path></svg>
+          </button>
+          <div class="model-picker"><span class="model-indicator"></span><select id="model-select" aria-label="AI model"></select><svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"></path></svg></div>
+          <span class="local-pill"><span></span> LOCAL</span>
+        </div>
+      </header>
+
+      <section class="chat-scroll" id="chat-scroll" aria-label="Conversation">
+        <div class="studio-empty-state" id="studio-empty-state">
+          <div class="studio-intro-mark" aria-hidden="true">
+            <span class="studio-intro-ring studio-intro-ring-one"></span>
+            <span class="studio-intro-ring studio-intro-ring-two"></span>
+            <img src="/assets/midnight-signal-logo.png" alt="">
+            <span class="studio-intro-spark studio-intro-spark-one"></span>
+            <span class="studio-intro-spark studio-intro-spark-two"></span>
+          </div>
+          <p class="studio-intro-eyebrow">YOUR LOCAL STUDIO</p>
+          <h1>What are we working on?</h1>
+          <p class="studio-intro-copy">Ask a question, build something, or explore your workspace. Your chat starts here.</p>
+          <div class="studio-quick-prompts" aria-label="Try a prompt">
+            <button type="button" data-studio-prompt="Help me plan a polished website. Ask what it is for, then help me build it in my workspace.">Build a website <span aria-hidden="true">↗</span></button>
+            <button type="button" data-studio-prompt="Help me understand a document I attach. Summarize its key points and cite page numbers when available.">Understand a document <span aria-hidden="true">↗</span></button>
+            <button type="button" data-studio-prompt="Take a look at my workspace and explain how the project is organized.">Explore my workspace <span aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+        <div class="messages" id="messages"></div>
+      </section>
+
+      <footer class="composer-area">
+        <div class="composer-wrap">
+          <div class="composer">
+            <div class="edit-message-banner" id="edit-message-banner" hidden>
+              <span>Editing an earlier prompt · later messages will be replaced when resent</span>
+              <button id="cancel-edit-message" type="button">Cancel</button>
+            </div>
+            <textarea id="prompt-input" rows="1" placeholder="Send a message..." aria-label="Message Midnight Signal"></textarea>
+            <div class="attachments" id="attachments" hidden></div>
+            <div class="attachment-prompt" id="attachment-prompt" role="status" aria-live="polite" hidden></div>
+            <div class="prompt-templates" id="prompt-templates" role="group" aria-label="Prompt templates" hidden>
+              <button type="button" data-template="Analyze the attached file and summarize its main points. Cite page numbers or sections when available.">Analyze a file</button>
+              <button type="button" data-template="Research this topic using current public web sources. Compare reliable sources, include links, and clearly distinguish sourced facts from uncertainty: [topic]">Research the web</button>
+              <button type="button" data-template="Explain this code clearly: what it does, how the important parts work, and any notable risks or edge cases.\n\n[Paste code or attach a file]">Explain code</button>
+              <button type="button" data-template="Create a complete, polished, responsive website for [purpose/audience]. Build the requested files in the workspace, verify the local links/assets, and provide a ZIP if it is a multi-file project.">Create a website</button>
+            </div>
+            <div class="composer-bottom">
+              <div class="composer-tools">
+                <button class="attach-button" id="attach-files" type="button" title="Attach PDF or text/code files from your computer"><span>＋</span> Attach files</button>
+                <button class="attach-button template-toggle" id="template-toggle" type="button" aria-expanded="false" aria-controls="prompt-templates" title="Insert a prompt template">Prompt ideas</button>
+                <input id="file-input" type="file" accept="text/*,.json,.md,.py,.js,.ts,.tsx,.jsx,.html,.css,.yml,.yaml,.toml,.xml,.sql,.sh,.ps1,.pdf,application/pdf" multiple hidden>
+                <label class="thinking-control" id="thinking-control" hidden title="Fast responds quicker; Think adds high-level live progress stages without displaying private reasoning">
+                  <span>Qwen3</span>
+                  <select id="thinking-select" aria-label="Qwen3 thinking mode">
+                    <option value="off" selected>Fast</option>
+                    <option value="on">Think</option>
+                  </select>
+                </label>
+                <label class="permission-control" id="permission-control" hidden title="Choose how this chat approves agent changes and commands">
+                  <span>Approvals</span>
+                  <select id="permission-select" aria-label="Coding agent approval mode">
+                    <option value="manual">Ask each time</option>
+                    <option value="auto_safe">Auto safe only</option>
+                    <option value="allow_all">Allow all</option>
+                  </select>
+                </label>
+                <div class="composer-hint"><span class="hint-spark">✳</span><span>Private by design</span><span class="hint-divider"></span><span>Enter to send</span></div>
+              </div>
+              <button class="send-button" id="send-button" aria-label="Send message" title="Send message">
+                <svg class="send-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"></path></svg>
+                <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+              </button>
+            </div>
+          </div>
+          <div class="composer-note" id="composer-note">Midnight Signal can make mistakes. Verify important information.</div>
+        </div>
+      </footer>
+    </main>
+  </div>
+  <div class="mobile-access-backdrop" id="mobile-access-backdrop" hidden>
+    <section class="mobile-access-dialog" role="dialog" aria-modal="true" aria-labelledby="mobile-access-title">
+      <header class="mobile-access-header">
+        <div><span class="eyebrow">PRIVATE WI-FI</span><h2 id="mobile-access-title">Connect your phone</h2></div>
+        <button class="icon-button" id="close-mobile-access" type="button" aria-label="Close phone access">×</button>
+      </header>
+      <div class="mobile-access-content">
+        <p>Start a temporary connection, then scan the QR code with your phone camera. Keep both devices on the same trusted Wi-Fi.</p>
+        <button class="settings-save mobile-access-start" id="start-mobile-access" type="button">Start phone access</button>
+        <div class="mobile-access-links" id="mobile-access-links" aria-live="polite"></div>
+        <details class="mobile-access-help">
+          <summary>Phone cannot connect?</summary>
+          <ol>
+            <li>Connect both devices to the same non-guest Wi-Fi network.</li>
+            <li>In Windows, set this trusted Wi-Fi network to <strong>Private</strong>: Settings → Network &amp; internet → Wi-Fi → your network → Network profile type.</li>
+            <li>Allow Python/Midnight Signal through Windows Firewall on <strong>Private networks only</strong>. Do not turn the firewall off.</li>
+            <li>Guest Wi-Fi or router client isolation can block devices from reaching each other.</li>
+          </ol>
+        </details>
+        <p class="mobile-access-warning">Each QR code contains a private, temporary access key. Don’t share it or use public Wi-Fi. Access stops when you turn it off or close Midnight Signal.</p>
+        <button class="settings-secondary" id="stop-mobile-access" type="button" hidden>Stop phone access</button>
+      </div>
+    </section>
+  </div>
+  <div class="workspace-browser-backdrop" id="workspace-browser-backdrop" hidden>
+    <section class="workspace-browser-dialog" role="dialog" aria-modal="true" aria-labelledby="workspace-browser-title">
+      <header class="workspace-browser-header">
+        <div><span class="eyebrow">LOCAL FILES</span><h2 id="workspace-browser-title">Workspace</h2></div>
+        <div class="workspace-browser-header-actions">
+          <button class="settings-secondary" id="review-workspace-changes" type="button">Review changes</button>
+          <button class="settings-secondary" id="change-workspace" type="button">Change folder</button>
+          <button class="icon-button" id="close-workspace-browser" type="button" aria-label="Close workspace browser">×</button>
+        </div>
+      </header>
+      <div class="workspace-browser-path" id="workspace-browser-path" aria-label="Workspace location"></div>
+      <div class="workspace-browser-content">
+        <nav class="workspace-file-list" id="workspace-file-list" aria-label="Files and folders"></nav>
+        <section class="workspace-file-preview" id="workspace-file-preview" aria-label="File preview" hidden></section>
+      </div>
+    </section>
+  </div>
+  <div class="palette-backdrop" id="palette-backdrop" hidden>
+    <section class="command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <label class="palette-search"><span aria-hidden="true">⌕</span><input id="palette-search" type="search" placeholder="Search commands…" autocomplete="off" aria-label="Search commands"></label>
+      <div class="palette-list" id="palette-list" role="listbox" aria-label="Commands"></div>
+    </section>
+  </div>
+  <div class="settings-backdrop" id="settings-backdrop" hidden>
+    <section class="settings-drawer" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <header class="settings-header">
+        <div><span class="eyebrow">PREFERENCES</span><h2 id="settings-title">Settings</h2></div>
+        <button class="icon-button" id="close-settings" type="button" aria-label="Close settings">×</button>
+      </header>
+      <form id="settings-form">
+        <section class="settings-section">
+          <h3>Model &amp; sampling</h3>
+          <p>These controls apply to new chats and the selected conversation.</p>
+          <div class="settings-grid">
+            <label>Temperature<input name="temperature" type="number" min="0" max="2" step="0.1" aria-describedby="temperature-help"><small id="temperature-help" class="settings-field-help">Lower is steadier; higher is more varied.</small></label>
+            <label>Top P<input name="top_p" type="number" min="0" max="1" step="0.05" aria-describedby="top-p-help"><small id="top-p-help" class="settings-field-help">Limits choices to the most likely token group.</small></label>
+            <label>Top K<input name="top_k" type="number" min="1" max="1000" step="1" aria-describedby="top-k-help"><small id="top-k-help" class="settings-field-help">Limits each choice to the top K tokens.</small></label>
+            <label>Repeat penalty<input name="repeat_penalty" type="number" min="0.5" max="2" step="0.05" aria-describedby="repeat-penalty-help"><small id="repeat-penalty-help" class="settings-field-help">Higher values discourage repeated phrases.</small></label>
+            <label>Context tokens<input name="num_ctx" type="number" min="512" max="131072" step="512" aria-describedby="context-help"><small id="context-help" class="settings-field-help">More context uses more memory.</small></label>
+            <label>Reply tokens<input name="num_predict" type="number" min="-1" max="32768" step="1" aria-describedby="reply-help"><small id="reply-help" class="settings-field-help">Maximum response length; use -1 for model maximum.</small></label>
+          </div>
+        </section>
+        <section class="settings-section">
+          <h3>Appearance</h3>
+          <label class="settings-row">Theme
+            <select name="theme">
+              <option value="light">Warm light</option>
+              <option value="dark">Midnight dark</option>
+              <option value="high-contrast">High contrast</option>
+              <option value="sunset">Sunset</option>
+              <option value="ember">Ember</option>
+              <option value="cyber">Cyber</option>
+              <option value="matrix">Matrix</option>
+              <option value="ice">Ice</option>
+              <option value="noir">Noir</option>
+              <option value="auto">Auto (warm light)</option>
+            </select>
+          </label>
+        </section>
+        <section class="settings-section">
+          <h3>Sound</h3>
+          <label class="settings-row"><span>Interface sounds</span><input name="sound" type="checkbox"></label>
+          <label class="settings-row">Volume<input name="volume" type="range" min="0" max="100" step="1"><output id="sound-volume"></output></label>
+        </section>
+        <section class="settings-section">
+          <h3>Agent defaults</h3>
+          <p>Choose how workspace actions are approved in new conversations.</p>
+          <label class="settings-row">Default approval mode
+            <select name="permission_mode">
+              <option value="manual">Ask each time</option>
+              <option value="auto_safe">Auto safe only</option>
+              <option value="allow_all">Allow all</option>
+            </select>
+          </label>
+        </section>
+        <section class="settings-section">
+          <h3>External tools · MCP</h3>
+          <p>Connect local Model Context Protocol servers. Their tools can access data outside the selected workspace. Configure only servers you trust; calls ask for approval unless you explicitly choose Allow all.</p>
+          <div class="settings-mcp-status" id="settings-mcp-status" role="status" aria-live="polite">Checking MCP configuration…</div>
+          <div class="settings-mcp-path"><code id="settings-mcp-config-path">Loading configuration path…</code><button class="settings-secondary" id="copy-mcp-config-path" type="button">Copy path</button></div>
+          <details class="settings-mcp-example">
+            <summary>View a local server configuration example</summary>
+            <pre>{
+  "servers": [
+    {
+      "name": "my-tools",
+      "command": "python",
+      "args": ["C:\\path\\to\\mcp_server.py"],
+      "env": {},
+      "cwd": "C:\\path\\to"
+    }
+  ]
+}</pre>
+            <small>Save this JSON to the path above, then restart the Studio server. MCP commands run as local subprocesses; Midnight Signal never installs or enables a server automatically.</small>
+          </details>
+        </section>
+        <section class="settings-section">
+          <h3>Advanced</h3>
+          <label class="settings-row"><span>Start with sidebar collapsed</span><input name="sidebar_collapsed" type="checkbox"></label>
+          <button class="settings-secondary" id="export-history" type="button">Export all conversations</button>
+        </section>
+        <footer class="settings-footer">
+          <button class="settings-secondary" id="reset-settings" type="button">Reset defaults</button>
+          <button class="settings-save" type="submit">Save settings</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+</body>
+</html>

@@ -17,6 +17,7 @@ bell. No audio files ship with the project and nothing here needs pip.
 """
 
 import math
+import logging
 import os
 import shutil
 import struct
@@ -24,6 +25,8 @@ import subprocess
 import sys
 import time
 import wave
+
+_logger = logging.getLogger(__name__)
 
 RATE = 22050
 CACHE_DIR = os.path.join(os.path.expanduser("~"), ".midnight_signal", "sounds")
@@ -239,8 +242,9 @@ class SoundEngine:
             self._procs.append(subprocess.Popen(
                 cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             ))
-        except Exception:
-            self._broken = True   # bad audio setup: go quiet instead of erroring every turn
+        except Exception as exc:
+            self._broken = True
+            _logger.warning("Sound playback disabled after an audio error: %s", exc)
 
 
 engine = SoundEngine()

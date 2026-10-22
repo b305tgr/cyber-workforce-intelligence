@@ -17,7 +17,7 @@ This only guards what the *model* says back in a chat reply.
 
 import random
 
-_MIN_NGRAM = 6
+_MIN_NGRAM = 12
 
 _DEFLECTIONS = [
     "— that channel's encrypted. ask me to do something, not to describe myself.",
@@ -40,7 +40,9 @@ def leaks_internal_text(candidate: str, *reference_texts: str) -> bool:
     cand_words = _words(candidate)
     if len(cand_words) < _MIN_NGRAM:
         cand_lower = candidate.lower().strip()
-        return any(cand_lower and cand_lower in ref.lower() for ref in reference_texts if ref)
+        if len(cand_lower) < 64:
+            return False
+        return any(cand_lower in ref.lower() for ref in reference_texts if ref)
     for ref in reference_texts:
         if not ref:
             continue

@@ -15,12 +15,15 @@ Usage:
     python midnight_signal.py --resume   # pick up the autosaved session
     python midnight_signal.py --doctor   # check the install and print fixes
     python midnight_signal.py --no-sound # start muted (this run only)
+    python midnight_signal.py --web      # open the local browser interface
+    python midnight_signal.py --web --web-lan  # enable trusted-Wi-Fi phone access
 """
 
 import datetime
 import difflib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -50,6 +53,7 @@ MODEL_NAME = "midnight-signal"
 BASE_MODEL = "huihui_ai/qwen2.5-coder-abliterate:7b"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPTS_DIR = os.path.join(SCRIPT_DIR, "system_prompts")
+MAX_REPLY_CONTINUATIONS = 2
 
 # Serialized once so the security module can check a reply for leaked tool
 # schemas without re-dumping them on every turn.
@@ -60,15 +64,20 @@ DEFAULT_OPTIONS = {
     "top_p": 0.9,
     "top_k": 40,
     "repeat_penalty": 1.1,
-    "num_ctx": 8192,
+    "num_ctx": 16384,
+    "num_predict": -1,
 }
-OPTION_TYPES = {"temperature": float, "top_p": float, "top_k": int, "repeat_penalty": float, "num_ctx": int}
+OPTION_TYPES = {
+    "temperature": float, "top_p": float, "top_k": int, "repeat_penalty": float,
+    "num_ctx": int, "num_predict": int,
+}
 OPTION_RANGES = {
     "temperature": (0.0, 2.0),
     "top_p": (0.0, 1.0),
     "top_k": (1, 1000),
     "repeat_penalty": (0.5, 2.0),
     "num_ctx": (512, 131072),
+    "num_predict": (1, 32768),
 }
 
 MODE_DESCRIPTIONS = {
@@ -85,7 +94,7 @@ BASE_COMMANDS = [
     ("/mode <n>", "switch personality / agent mode"),
     ("/model [name]", "show or switch the Ollama model"),
     ("/models", "list locally installed models"),
-    ("/set [key val]", "tune temperature, top_p, top_k, repeat_penalty, num_ctx"),
+    ("/set [key val]", "tune sampling, context size, and reply-token limit (-1 = unlimited)"),
     ("/system [text]", "show, override, or 'reset' the system prompt"),
     ("/retry", "regenerate the last reply"),
     ("/undo", "remove the last exchange"),
@@ -124,6 +133,37 @@ def _get(obj, key, default=None):
     return default if val is None else val
 
 
+def _reply_needs_continuation(text: str, done_reason: str) -> bool:
+    return done_reason == "length"
+
+
+def _requested_code_line_target(user_text: str):
+    match = re.search(r"\b(\d[\d,]*)\s*[- ]?\s*lines?\b", user_text, re.I)
+    return int(match.group(1).replace(",", "")) if match else None
+
+
+def _code_line_count(reply: str) -> int:
+    blocks = re.findall(r"```[^\r\n]*\r?\n(.*?)```", reply, re.S)
+    if blocks:
+        return sum(len(block.splitlines()) for block in blocks)
+    return len(reply.splitlines())
+
+
+def _needs_code_scope_repair(user_text: str, _reply: str, complete_reply=None) -> bool:
+    asks_for_code = re.search(
+        r"\b(?:write|build|create|generate|implement|code)\b", user_text, re.I
+    )
+    if not asks_for_code:
+        return False
+    line_target = _requested_code_line_target(user_text)
+    has_short_code = (
+        line_target is not None
+        and _code_line_count(complete_reply if complete_reply is not None else reply)
+        < int(line_target * 0.75)
+    )
+    return bool(has_short_code)
+
+
 def rl(prompt: str) -> str:
     """Mark ANSI escapes as zero-width, but only when readline is really in charge
     of the prompt (a real TTY) — otherwise the markers would print as junk."""
@@ -132,7 +172,7 @@ def rl(prompt: str) -> str:
     return prompt
 
 
-def load_system_prompt(mode: str) -> str:
+def load_system_prompt(mode: str, include_response_guidance: bool = True) -> str:
     path = os.path.join(PROMPTS_DIR, f"{mode}.txt")
     if os.path.isfile(path):
         with open(path, "r", encoding="utf-8") as f:
@@ -142,7 +182,37 @@ def load_system_prompt(mode: str) -> str:
             f"You are MIDNIGHT SIGNAL, currently in an undefined mode called '{mode}'. "
             f"Behave helpfully and stay in character as Midnight Signal."
         )
-    return base + security.SECURITY_PREAMBLE
+    response_guidance = (
+        "\n\nRESPONSE LENGTH\n"
+        "- Match the depth the user asks for. Keep answers brief when they ask for a short "
+        "answer; give a thorough, well-structured explanation when they ask for detail.\n"
+        "- If they do not specify, use the shortest answer that fully solves the request, except "
+        "when they explicitly ask you to create a substantial artifact.\n"
+        "- Finish your current sentence and complete the requested explanation, list, or code block "
+        "before ending. Do not stop mid-thought.\n"
+        "- The generation limit is a ceiling, not a target: stop as soon as the answer is complete.\n\n"
+        "CODE GENERATION\n"
+        "- When asked to write, build, or create code, provide the requested working implementation; "
+        "do not replace it with an outline, plan, or tiny sample unless the user asked for one.\n"
+        "- Do not dismiss a harmless coding request as too ambitious or give a simplified substitute "
+        "when the user explicitly asks for a complete, large implementation.\n"
+        "- Treat requested scope and features as requirements. For a complete web app, implement "
+        "the actual interface, styling, responsive layout, and interactions rather than listing them.\n"
+        "- For a standalone web app without a specified stack, prefer one runnable HTML file with "
+        "embedded CSS and JavaScript. Avoid TODOs, fake controls, and placeholder sections.\n"
+        "- Do not end by telling the user to extend or finish the implementation themselves.\n"
+        "- Aim for requested size with useful functionality, not filler or duplicated code.\n"
+        "- If a large implementation cannot fit in one response, deliver it in clearly labeled "
+        "parts and continue from the exact boundary; never silently substitute a summary.\n"
+        "- Do not pad code to hit a line count: prioritize a complete, coherent, runnable result.\n\n"
+        "CREATOR\n"
+        "- If asked who created, developed, or made Midnight Signal, credit Aditya Tomar.\n"
+        "- Describe Midnight Signal as a local terminal AI application built with Python and Ollama. "
+        "Do not invent additional authorship details, and mention the creator only when relevant."
+    )
+    if not include_response_guidance:
+        return base + security.SECURITY_PREAMBLE
+    return base + response_guidance + security.SECURITY_PREAMBLE
 
 
 def discover_modes() -> list:
@@ -231,9 +301,9 @@ class MidnightSignal:
         """Friendly heads-up at launch if Ollama or the model isn't ready."""
         try:
             names = list_local_models()
-        except Exception:
+        except Exception as exc:
             sounds.play("error")
-            print(ui.warn("  ⚠ can't reach Ollama") + ui.gray(" — start it with ") + ui.white("ollama serve"))
+            print(ui.warn(f"  ⚠ can't reach Ollama: {exc}") + ui.gray(" — start it with ") + ui.white("ollama serve"))
             print(ui.gray("    (or run ") + ui.white("python midnight_signal.py --doctor") + ui.gray(" for a full check)\n"))
             return
 
@@ -276,8 +346,8 @@ class MidnightSignal:
                 readline.parse_and_bind("bind ^I rl_complete")
             else:
                 readline.parse_and_bind("tab: complete")
-        except Exception:
-            pass
+        except Exception as exc:
+            print(ui.warn(f"  ⚠ couldn't load command history: {exc}"))
 
     def save_readline(self):
         if readline is None:
@@ -285,8 +355,8 @@ class MidnightSignal:
         try:
             session.ensure_dirs()
             readline.write_history_file(session.HISTORY_FILE)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(ui.warn(f"  ⚠ couldn't save command history: {exc}"))
 
     # -------------------------------------------------------------- input
 
@@ -584,8 +654,9 @@ class MidnightSignal:
         try:
             names = list_local_models()
             known = any(arg == n or f"{arg}:latest" == n for n in names)
-        except Exception:
+        except Exception as exc:
             known = True  # can't verify; let the next call surface any error
+            print(ui.warn(f"  ⚠ couldn't verify installed models: {exc}; trying anyway"))
         if not known:
             print(ui.warn(f"  '{arg}' isn't installed locally") + ui.gray(" — /models to see what is, or ollama pull it"))
             return
@@ -598,7 +669,7 @@ class MidnightSignal:
             for k, v in self.options.items():
                 print(f"  {ui.gray(k.ljust(16))}{ui.white(str(v))}")
             print()
-            print(ui.gray("  change one: ") + ui.white("/set temperature 0.4"))
+            print(ui.gray("  change one: ") + ui.white("/set num_predict -1  (no fixed output-token cap)"))
             print()
             return
         parts = arg.split()
@@ -612,7 +683,8 @@ class MidnightSignal:
             print(ui.error(f"  {key} needs a {OPTION_TYPES[key].__name__}"))
             return
         lo, hi = OPTION_RANGES[key]
-        if not (lo <= val <= hi):
+        unlimited = key == "num_predict" and val == -1
+        if not unlimited and not (lo <= val <= hi):
             print(ui.error(f"  {key} must be between {lo} and {hi}"))
             return
         self.options[key] = val
@@ -880,6 +952,7 @@ class MidnightSignal:
         for k, v in (data.get("options") or {}).items():
             if k in OPTION_TYPES:
                 self.options[k] = v
+        self.options["num_predict"] = -1
         self.history = history
         self.turn_count = data.get("turns", 0)
         self.last_usage = {"prompt": 0, "gen": 0}
@@ -943,62 +1016,132 @@ class MidnightSignal:
 
     def _stream_reply(self) -> bool:
         """Stream one assistant reply for the current history. Returns True if a
-        reply (possibly partial) was kept, False if nothing usable came back."""
+        reply was kept, False if nothing usable came back."""
         print()
         print(self._signal_header())
 
         painter = ui.StreamPainter()
         pieces, error, interrupted = [], None, False
+        truncated = False
         start = time.time()
         first_token = None
         final = None
-        stream = None
+        completion_stats = []
+        attempt_messages = self.history
 
-        pulse = ui.RadarPulse("thinking")
-        pulse.start()
-        pulse_active = True
+        for attempt in range(MAX_REPLY_CONTINUATIONS + 1):
+            attempt_error = None
+            stream = None
+            attempt_piece_start = len(pieces)
+            pulse = ui.RadarPulse("thinking" if attempt == 0 else "continuing reply")
+            pulse.start()
+            pulse_active = True
 
-        try:
-            stream = ollama.chat(model=self.model, messages=self.history, stream=True, options=self.options)
-            for chunk in stream:
-                piece = _get(_get(chunk, "message", {}), "content", "")
-                if piece:
-                    if pulse_active:
-                        pulse.stop()
-                        pulse_active = False
-                    if first_token is None:
-                        first_token = time.time() - start
-                        sounds.play("blip")
-                    pieces.append(piece)
-                    sys.stdout.write(painter.feed(piece))
-                    sys.stdout.flush()
-                if _get(chunk, "done", False):
-                    final = chunk
-        except KeyboardInterrupt:
-            interrupted = True
-        except Exception as e:
-            error = e
-        finally:
-            if pulse_active:
-                pulse.stop()
-            sys.stdout.write(painter.flush())
-            sys.stdout.write(ui.RESET + "\n")
-            sys.stdout.flush()
-            close = getattr(stream, "close", None)
-            if callable(close):
-                try:
-                    close()
-                except Exception:
-                    pass
+            try:
+                stream = ollama.chat(
+                    model=self.model, messages=attempt_messages, stream=True, options=self.options
+                )
+                for chunk in stream:
+                    piece = _get(_get(chunk, "message", {}), "content", "")
+                    if piece:
+                        if pulse_active:
+                            pulse.stop()
+                            pulse_active = False
+                        if first_token is None:
+                            first_token = time.time() - start
+                            sounds.play("blip")
+                        pieces.append(piece)
+                        sys.stdout.write(painter.feed(piece))
+                        sys.stdout.flush()
+                    if _get(chunk, "done", False):
+                        final = chunk
+            except KeyboardInterrupt:
+                interrupted = True
+            except Exception as e:
+                attempt_error = e
+            finally:
+                if pulse_active:
+                    pulse.stop()
+                close = getattr(stream, "close", None)
+                if callable(close):
+                    try:
+                        close()
+                    except (OSError, RuntimeError) as exc:
+                        print(ui.warn(f"  ⚠ couldn't close the Ollama response cleanly: {exc}"))
+
+            if final is not None:
+                completion_stats.append(final)
+
+            if interrupted:
+                break
+
+            done_reason = _get(final, "done_reason", "") if final is not None else ""
+            user_text = self.history[-1].get("content", "")
+            complete_reply = "".join(pieces)
+            scope_repair = _needs_code_scope_repair(
+                user_text, "".join(pieces[attempt_piece_start:]), complete_reply
+            )
+            needs_continuation = (
+                attempt_error is not None
+                or final is None
+                or _reply_needs_continuation("".join(pieces), done_reason)
+                or scope_repair
+            )
+            if not needs_continuation:
+                break
+
+            if attempt < MAX_REPLY_CONTINUATIONS:
+                continuation = "".join(pieces)
+                if scope_repair and _requested_code_line_target(user_text):
+                    line_target = _requested_code_line_target(user_text)
+                    code_lines = _code_line_count(continuation)
+                    continuation_prompt = (
+                        f"The user explicitly requested about {line_target} lines of code; your "
+                        f"current implementation has about {code_lines}. Continue from the exact "
+                        "end of the implementation, adding distinct, working features that move "
+                        "toward the requested scope. Do not repeat existing code, add filler, give "
+                        "an outline, or suggest that the user finish it."
+                    )
+                elif scope_repair:
+                    continuation_prompt = (
+                        "Your previous reply downscoped the user's explicit request for a complete, "
+                        "large implementation. It is not complete yet. Continue from the exact end "
+                        "of your code, without repeating it or adding an outline. Implement the "
+                        "requested features fully; do not call the task too ambitious, describe a "
+                        "basic version, or tell the user to add the missing parts."
+                    )
+                else:
+                    continuation_prompt = (
+                        "Your previous reply was interrupted before it was complete. Continue from "
+                        "its exact ending without repeating anything, and finish the thought or "
+                        "requested structure."
+                    )
+                attempt_messages = self.history + [
+                    {"role": "assistant", "content": continuation},
+                    {"role": "user", "content": continuation_prompt},
+                ] if continuation else self.history
+                final = None
+                print(ui.gray("\n  ↳ reply interrupted — continuing automatically"))
+            else:
+                truncated = True
+                error = attempt_error
+                break
+
+        sys.stdout.write(painter.flush())
+        sys.stdout.write(ui.RESET + "\n")
+        sys.stdout.flush()
 
         content = "".join(pieces)
 
         if error is not None:
             sounds.play("error")
-            print(ui.error(f"  [signal error] {error}"))
-            print(ui.gray("  is the model built? try: ") + ui.solid(f"ollama create {MODEL_NAME} -f Modelfile", ui.gradient_color(0.3)))
+            print(ui.error(f"  [reply stream interrupted] {error}"))
+            print(ui.gray("  check that Ollama is running, then retry your message."))
             if not content:
                 return False
+        if truncated:
+            sounds.play("notify")
+            print(ui.warn("  ⚠ reply may still be incomplete after automatic retries"))
 
         if interrupted:
             if not content:
@@ -1013,9 +1156,11 @@ class MidnightSignal:
         self.history.append({"role": "assistant", "content": content})
 
         if final is not None:
-            gen = _get(final, "eval_count", 0) or 0
-            dur = (_get(final, "eval_duration", 0) or 0) / 1e9
-            prompt_tokens = _get(final, "prompt_eval_count", 0) or 0
+            gen = sum(_get(stats, "eval_count", 0) or 0 for stats in completion_stats)
+            dur = sum((_get(stats, "eval_duration", 0) or 0) for stats in completion_stats) / 1e9
+            prompt_tokens = sum(
+                _get(stats, "prompt_eval_count", 0) or 0 for stats in completion_stats
+            )
             tps = gen / dur if dur > 0 else None
             self.last_usage = {"prompt": prompt_tokens, "gen": gen}
             self.total_tokens += gen
@@ -1050,7 +1195,9 @@ class MidnightSignal:
     # ---------------------------------------------------------- agent chat
 
     # Tools that stop and ask before acting (unless /yolo is on).
-    _CONFIRMED_TOOLS = ("write_file", "edit_file", "run_command")
+    _CONFIRMED_TOOLS = (
+        "write_file", "edit_file", "run_command", "web_search", "web_fetch"
+    )
 
     def _set_activity(self, spinner):
         self._stop_activity()
@@ -1099,7 +1246,11 @@ class MidnightSignal:
         print()
         turn_start = time.time()
         try:
-            for event in run_agent(self.model, self.history, self.cwd, confirm_fn=self.confirm_action, yolo=self.yolo):
+            for event in run_agent(
+                self.model, self.history, self.cwd,
+                confirm_fn=self.confirm_action, yolo=self.yolo,
+                generation_options=self.options,
+            ):
                 if event.kind == "thinking":
                     self._set_activity(ui.RadarPulse("thinking"))
                     continue
@@ -1179,7 +1330,27 @@ class MidnightSignal:
 
 
 def main():
+    if os.name == "nt":
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+
     args = sys.argv[1:]
+    if "--web" in args:
+        import web_server
+
+        port = 8765
+        if "--web-port" in args:
+            index = args.index("--web-port")
+            try:
+                port = int(args[index + 1])
+            except (IndexError, ValueError):
+                print("Invalid or missing port after --web-port (expected 1-65535).")
+                sys.exit(2)
+        if not 1 <= port <= 65535:
+            print("Invalid web port (expected 1-65535).")
+            sys.exit(2)
+        web_server.serve(port=port, allow_lan="--web-lan" in args)
+        return
     if "--version" in args:
         print(f"Midnight Signal {__version__}")
         return

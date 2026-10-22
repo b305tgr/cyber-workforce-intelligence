@@ -5,11 +5,14 @@ Truecolor ANSI gradients, spy/radar-style animations, banners, help screen,
 and the left-hand signal indicator. Pure stdlib, zero dependencies.
 """
 
+import logging
 import sys
 import time
 import re
 import shutil
 import threading
+
+_logger = logging.getLogger(__name__)
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -154,7 +157,7 @@ def highlight_words(text: str, words) -> str:
 def term_width(default=72):
     try:
         return max(shutil.get_terminal_size().columns, 40)
-    except Exception:
+    except OSError:
         return default
 
 
@@ -694,6 +697,7 @@ class StreamPainter:
         self._in_code_block = False    # persists across lines: are we inside ``` ... ```
         self._span = None              # None | "bold" | "code" — an inline marker opened mid-stream
         self._safe = True              # False after any internal error; falls back to raw passthrough
+        self._finalizing = False
 
     def feed(self, piece: str) -> str:
         self._buf += piece
@@ -702,9 +706,10 @@ class StreamPainter:
             return out
         try:
             return self._drain()
-        except Exception:
+        except Exception as exc:
             # Never let a rendering edge case break the stream — show the
             # raw text (still correct, just unstyled) instead of stalling.
+            _logger.warning("Markdown stream renderer fell back to plain text: %s", exc)
             self._safe = False
             out, self._buf = self._buf, ""
             return out
@@ -713,10 +718,14 @@ class StreamPainter:
         """Call once the stream ends to render whatever's left unterminated."""
         self._buf += "\n"
         try:
+            self._finalizing = True
             out = self._drain()
-        except Exception:
+        except Exception as exc:
+            _logger.warning("Markdown stream flush fell back to plain text: %s", exc)
             out = self._buf
             self._buf = ""
+        finally:
+            self._finalizing = False
         return out.rstrip("\n")
 
     # ── the drain loop: consume as much of self._buf as is safely decidable ──
@@ -934,6 +943,14 @@ class StreamPainter:
                 else:
                     kind, start, mlen = marker
                     out.append(base(text[i:start]))
+                    closing = {"bold": "**", "italic": "*", "code": "`"}[kind]
+                    if (
+                        self._finalizing
+                        and text.find(closing, start + mlen) == -1
+                    ):
+                        out.append(base(text[start:]))
+                        i = n
+                        continue
                     self._span = kind
                     i = start + mlen
         return "".join(out)

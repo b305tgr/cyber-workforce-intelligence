@@ -6,6 +6,7 @@ they survive restarts, and can be exported as readable markdown.
 """
 
 import json
+import logging
 import os
 import re
 import time
@@ -14,6 +15,7 @@ HOME_DIR = os.path.join(os.path.expanduser("~"), ".midnight_signal")
 SESS_DIR = os.path.join(HOME_DIR, "sessions")
 HISTORY_FILE = os.path.join(HOME_DIR, "history")
 SETTINGS_FILE = os.path.join(HOME_DIR, "settings.json")
+_logger = logging.getLogger(__name__)
 
 DEFAULT_SETTINGS = {"sound": True, "volume": 60, "theme": "auto", "statusbar": True}
 
@@ -26,8 +28,12 @@ def load_settings() -> dict:
             saved = json.load(f)
         if isinstance(saved, dict):
             data.update({k: v for k, v in saved.items() if k in DEFAULT_SETTINGS})
-    except (OSError, ValueError):
-        pass
+    except FileNotFoundError:
+        return data
+    except (OSError, ValueError) as exc:
+        _logger.warning(
+            "Could not load settings from %s; using defaults: %s", SETTINGS_FILE, exc
+        )
     return data
 
 
@@ -38,8 +44,8 @@ def save_settings(settings: dict) -> None:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
         os.replace(tmp, SETTINGS_FILE)
-    except OSError:
-        pass  # preferences are a nicety; never crash over them
+    except OSError as exc:
+        _logger.error("Could not save settings to %s: %s", SETTINGS_FILE, exc)
 
 
 def ensure_dirs():
@@ -88,7 +94,10 @@ def list_sessions() -> list:
                 data = json.load(f)
             msgs = len([m for m in data.get("history", []) if m.get("role") in ("user", "assistant")])
             rows.append((fn[:-5], data.get("saved_at", os.path.getmtime(path)), msgs, data.get("mode", "?")))
-        except (OSError, ValueError):
+        except (OSError, ValueError, AttributeError, TypeError) as exc:
+            _logger.warning(
+                "Skipping unreadable session file %s: %s", path, exc
+            )
             continue
     rows.sort(key=lambda r: r[1], reverse=True)
     return rows

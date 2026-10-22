@@ -84,6 +84,7 @@ Ok "built '$CustomModel' from the Modelfile"
 # -- 5. Health check -----------------------------------------------------
 Step "5/5  Health check"
 & $VPy midnight_signal.py --doctor
+if ($LASTEXITCODE -ne 0) { Die "The health check found a problem. Fix the reported issue, then run .\run.ps1." }
 
 Write-Host ""
 Write-Host "> Done. Launch it with:  .\run.ps1" -ForegroundColor Green

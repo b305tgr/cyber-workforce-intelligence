@@ -48,8 +48,8 @@ def run(model: str, base_model: str) -> int:
         try:
             from importlib.metadata import version
             ver = version("ollama")
-        except Exception:
-            ver = "installed"
+        except Exception as exc:
+            ver = f"installed (version unavailable: {exc})"
         results.append(_row(OK, "ollama python package", ver))
     except ImportError:
         results.append(_row(FAIL, "ollama python package", "not installed", "pip install -r requirements.txt"))
@@ -70,9 +70,9 @@ def run(model: str, base_model: str) -> int:
                 if n:
                     names.append(n)
             results.append(_row(OK, "ollama server", f"reachable · {len(names)} model(s) installed"))
-        except Exception:
+        except Exception as exc:
             results.append(_row(
-                FAIL, "ollama server", "not reachable",
+                FAIL, "ollama server", f"not reachable: {exc}",
                 "Install Ollama from https://ollama.com/download , then start it:\n"
                 "  ollama serve        (the desktop app does this for you)",
             ))
@@ -101,9 +101,11 @@ def run(model: str, base_model: str) -> int:
                     results.append(_row(OK, "tool calling (agent)", "supported"))
                 else:
                     results.append(_row(WARN, "tool calling (agent)", "this model doesn't advertise it",
-                                        "Agent mode may fall back to text-recovery. Chat modes are unaffected."))
-            except Exception:
-                results.append(_row(WARN, "tool calling (agent)", "couldn't query model info"))
+                                        "Coding agent mode needs a tool-enabled model. Chat modes are unaffected."))
+            except Exception as exc:
+                results.append(_row(
+                    WARN, "tool calling (agent)", f"couldn't query model info: {exc}"
+                ))
 
     # terminal
     ct = os.environ.get("COLORTERM", "").lower()

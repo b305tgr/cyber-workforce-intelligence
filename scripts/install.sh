@@ -77,6 +77,6 @@ ok "built '$CUSTOM_MODEL' from the Modelfile"
 
 # ── 5. Health check ──────────────────────────────────────────────────
 step "5/5  Health check"
-python midnight_signal.py --doctor || true
+python midnight_signal.py --doctor
 
 printf '\n%s▌ Done.%s Launch it with:  %s./run.sh%s\n\n' "$org" "$off" "$grn" "$off"

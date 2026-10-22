@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fbf5ed">
+  <meta name="description" content="Share feedback or report an issue with Midnight Signal.">
+  <title>Contact &amp; feedback · Midnight Signal</title>
+  <link rel="icon" type="image/png" href="/assets/midnight-signal-logo.png">
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to contact form</a>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="site-brand" href="/" aria-label="Midnight Signal home"><img src="/assets/midnight-signal-logo.png" alt=""><span class="site-brand-word">midnight<span>signal</span></span></a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="/">Home</a><a href="/about">About</a><a href="/contact" aria-current="page">Contact</a>
+        <a class="site-nav-cta" href="/studio">Open studio <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+    <main class="site-main" id="main-content">
+      <section class="site-page-hero">
+        <span class="site-kicker">We’re listening</span>
+        <h1>Help us make<br><span>better signal.</span></h1>
+        <p class="site-lede">Found a bug, have an idea, or want to share what you built? Leave yourself a feedback note or open a project issue.</p>
+      </section>
+      <section class="contact-layout">
+        <div class="contact-info">
+          <h2>Reach the project</h2>
+          <p>For bugs and feature requests, the project issue tracker is the best place to include steps to reproduce and relevant details. Don’t include passwords, access links, or private documents.</p>
+          <a class="contact-link" href="https://github.com/17413-maker/MIDNIGHTSIGNAL/issues" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">↗</span> Open project issues</a>
+          <p class="site-disclosure"><strong>Privacy note</strong><br>This local contact page does not send form data to Midnight Signal or a third party. The form prepares a text note for you to review, download, and share yourself.</p>
+        </div>
+        <div class="feedback-card">
+          <h2>Prepare a feedback note</h2>
+          <p>Write a short description. Nothing is submitted automatically.</p>
+          <form class="feedback-form" id="feedback-form">
+            <label>What is this about?
+              <select name="category" required>
+                <option value="Bug report">Bug report</option>
+                <option value="Feature idea">Feature idea</option>
+                <option value="General feedback">General feedback</option>
+              </select>
+            </label>
+            <label>Subject<input name="subject" maxlength="120" required placeholder="A short summary"></label>
+            <label>Details<textarea name="details" maxlength="8000" required placeholder="What happened, what did you expect, or what would make this better?"></textarea></label>
+            <button class="site-button" type="submit">Prepare feedback note <span aria-hidden="true">↓</span></button>
+            <p class="feedback-note" id="feedback-note" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><p>Midnight Signal · A local-first AI studio</p><nav class="site-footer-links" aria-label="Footer navigation"><a href="/">Home</a><a href="/about">About</a><a href="/contact">Contact</a><a href="/studio">Studio</a></nav></footer>
+  </div>
+</body>
+</html>
