@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pen Shop</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 1em 0;
+        }
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: #444;
+            padding: 0.5em 0;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+        main {
+            padding: 20px;
+        }
+        .product {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 1em 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome to Pen Shop</h1>
+    </header>
+    <nav>
+        <a>Home</a>
+        <a href="#products">Products</a>
+        <a>Cart</a>
+    </nav>
+    <main id="products">
+        <div class="product">
+            <h2>Pen 1</h2>
+            <p>Description: A high-quality pen.</p>
+            <p>Price: $5.99</p>
+            <button onclick="addToCart('Pen 1')">Add to Cart</button>
+        </div>
+        <div class="product">
+            <h2>Pen 2</h2>
+            <p>Description: A durable pen.</p>
+            <p>Price: $7.99</p>
+            <button onclick="addToCart('Pen 2')">Add to Cart</button>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2023 Pen Shop</p>
+    </footer>
+
+    <script>
+        function addToCart(product) {
+            alert(`${product} added to cart!`);
+        }
+    </script>
+</body>
+</html>

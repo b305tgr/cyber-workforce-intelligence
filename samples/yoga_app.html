@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yoga App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f9fa;
+      text-align: center;
+      padding: 50px;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    p {
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    button {
+      background-color: #4caf50;
+      border: none;
+      padding: 15px 30px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .pose {
+      margin-top: 20px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    .timer {
+      margin-top: 20px;
+      font-size: 24px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome to Your Yoga App!</h1>
+  <p>Click the button below to get a random yoga pose and start your timer.</p>
+
+  <button onclick="showRandomPose()">Get Pose</button>
+
+  <div class="pose" id="poseDisplay"></div>
+  <div class="timer" id="timerDisplay">Time: 0 seconds</div>
+
+  <script>
+    const poses = [
+      "Downward Dog",
+      "Warrior II",
+      "Tree Pose",
+      "Child's Pose",
+      "Bridge Pose",
+      "Triangle Pose",
+      "Pigeon Pose",
+      "Plank Pose",
+      "Cobra Pose",
+      "Eagle Pose"
+    ];
+
+    let timerInterval;
+    let time = 0;
+
+    function showRandomPose() {
+      const randomIndex = Math.floor(Math.random() * poses.length);
+      document.getElementById("poseDisplay").textContent = `Try this pose: ${poses[randomIndex]}`;
+      startTimer();
+    }
+
+    function startTimer() {
+      time = 0;
+      document.getElementById("timerDisplay").textContent = "Time: 0 seconds";
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        time++;
+        document.getElementById("timerDisplay").textContent = `Time: ${time} seconds`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+  </script>
+</body>
+</html>

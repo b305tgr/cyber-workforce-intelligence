@@ -1500,7 +1500,22 @@
   }
 
   function renderAgentActivity(activity) {
-    const rawDetails = activity.args && Object.keys(activity.args).length
+    const fileTools = new Set([
+      "write_file",
+      "edit_file",
+      "create_website_entry",
+      "repair_website_entry",
+      "create_website_asset",
+    ]);
+    const isFileWrite = fileTools.has(activity.name);
+    const filePath = activity.name === "create_website_entry"
+      || activity.name === "repair_website_entry"
+      ? "index.html"
+      : String(activity.args?.path || "");
+    const title = isFileWrite && filePath
+      ? `${activity.name === "edit_file" || activity.name === "repair_website_entry" ? "Updating" : "Writing"} ${filePath}`
+      : activity.name || "Agent";
+    const rawDetails = !isFileWrite && activity.args && Object.keys(activity.args).length
       ? JSON.stringify(activity.args, null, 2)
       : "";
     const details = rawDetails.length > 1200
@@ -1531,7 +1546,7 @@
         return `<a href="${href}" target="_blank" rel="noopener noreferrer">${href}</a>${punctuation}`;
       },
     );
-    return     `<details class="agent-activity activity-${escapeHtml(stateClass)}"${expanded ? " open" : ""}><summary class="activity-heading"><span class="activity-pulse" aria-hidden="true"></span><strong>${escapeHtml(activity.name || "Agent")}</strong><span class="activity-state">${escapeHtml(state)}</span></summary><div class="activity-content">${details ? `<pre class="activity-details">${escapeHtml(details)}</pre>` : ""}${result ? `<pre class="activity-result">${linksResult ? renderedResult : escapeHtml(result)}${activity.resultTruncated || fullResult.length > 4000 ? "\n… output truncated" : ""}</pre>` : ""}${confirmation}${undo}</div></details>`;
+    return     `<details class="agent-activity activity-${escapeHtml(stateClass)}"${expanded ? " open" : ""}><summary class="activity-heading"><span class="activity-pulse" aria-hidden="true"></span><strong>${escapeHtml(title)}</strong><span class="activity-state">${escapeHtml(state)}</span></summary><div class="activity-content">${details ? `<pre class="activity-details">${escapeHtml(details)}</pre>` : ""}${result ? `<pre class="activity-result">${linksResult ? renderedResult : escapeHtml(result)}${activity.resultTruncated || fullResult.length > 4000 ? "\n… output truncated" : ""}</pre>` : ""}${confirmation}${undo}</div></details>`;
   }
 
   function appendGeneratedDownloads(container, message) {
@@ -1587,35 +1602,69 @@
     return "Working through the next step";
   }
 
-  function progressSubject(prompt) {
-    const firstLine = prompt.trim().split(/\r?\n/, 1)[0];
-    const subject = firstLine
-      .replace(/^(?:(?:hey|please|can you|could you|would you|help me|i need you to|i want you to|tell me|show me)\s+)/i, "")
-      .replace(/[.!?;:,]+$/, "")
-      .trim();
-    if (!subject) return "";
-    if (subject.length <= 62) return subject;
-    return `${subject.slice(0, 59).replace(/\s+\S*$/, "")}…`;
-  }
-
   function userFacingProgress(text) {
     const phase = String(text || "").trim();
-    if (/waiting for the model'?s first response/i.test(phase)) {
-      return "Finding a good way into your question";
+    if (/waiting for the model(?:['’]s)? first response/i.test(phase)) {
+      return "Finding a clear path through your question…";
     }
     if (/generating a user-facing update/i.test(phase)) {
-      return "Putting the useful details together";
+      return "Bringing the useful details into focus…";
     }
     if (/^analyzing your request$/i.test(phase)) {
-      return "Getting oriented to your request";
+      return "Getting oriented to your request…";
     }
     if (/^planning the implementation$/i.test(phase)) {
-      return "Working out a helpful approach";
+      return "Mapping out a helpful approach…";
     }
     if (/^preparing the next action$/i.test(phase)) {
-      return "Getting the next step ready";
+      return "Lining up the next step…";
     }
     return phase;
+  }
+
+  function progressStagesForPrompt(prompt) {
+    const request = String(prompt || "").toLowerCase();
+    if (/\b(?:website|web site|html|css|landing page|frontend|front-end|design|ui|ux)\b/.test(request)) {
+      return [
+        "Mapping the pages and moving parts…",
+        "Bringing the layout and details together…",
+        "Checking the small touches that make it feel finished…",
+      ];
+    }
+    if (/\b(?:pdf|docx|document|report|summari[sz]e|write|draft)\b/.test(request)) {
+      return [
+        "Gathering the details that matter…",
+        "Shaping them into a clear structure…",
+        "Giving the final pass a careful look…",
+      ];
+    }
+    if (/\b(?:code|workspace|project|bug|debug|file|function|test|build)\b/.test(request)) {
+      return [
+        "Tracing the pieces involved…",
+        "Connecting the changes to the right places…",
+        "Checking the result for rough edges…",
+      ];
+    }
+    return [
+      "Finding a clear path through your question…",
+      "Bringing the useful details into focus…",
+      "Shaping a considered response…",
+    ];
+  }
+
+  function isWebsiteBuildRequest(prompt) {
+    return /\b(?:build|create|make|generate|develop|design|write|code)\b[\s\S]{0,120}\b(?:website|web\s+site|webpage|web\s+page|landing\s+page|site)\b/i.test(
+      String(prompt || ""),
+    );
+  }
+
+  function progressMotionFor(text) {
+    const motions = ["orbit", "ripple", "signal"];
+    let hash = 0;
+    for (const character of String(text || "")) {
+      hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    }
+    return motions[hash % motions.length];
   }
 
   function createProgressIndicator(text) {
@@ -1624,6 +1673,7 @@
     progress.setAttribute("role", "status");
     progress.setAttribute("aria-live", "polite");
     progress.innerHTML = '<span class="progress-orbit" aria-hidden="true"><span></span><span></span><span></span></span><span></span>';
+    progress.dataset.motion = progressMotionFor(text);
     progress.lastElementChild.textContent = userFacingProgress(text);
     return progress;
   }
@@ -1843,6 +1893,7 @@
         progress = createProgressIndicator(message.progress);
         content.append(progress);
       }
+      progress.dataset.motion = progressMotionFor(message.progress);
       progress.lastElementChild.textContent = userFacingProgress(message.progress);
     } else {
       progress?.remove();
@@ -2326,6 +2377,26 @@
     }
     chat.mode = elements.mode.value || "default";
     chat.model = elements.model.value || appStatus.model;
+    if (
+      chat.mode !== "agent"
+      && isWebsiteBuildRequest(displayContent)
+      && appStatus.modes.includes("agent")
+    ) {
+      chat.mode = "agent";
+      elements.mode.value = "agent";
+      if (
+        !(appStatus.agent_models || []).includes(chat.model)
+        && appStatus.recommended_agent_model
+      ) {
+        chat.model = appStatus.recommended_agent_model;
+        elements.model.value = chat.model;
+        modelSelectionMade = false;
+        showToast(`Using ${chat.model} so the website can be written to your workspace`);
+      } else {
+        showToast("Switching to Coding agent to create the website in your workspace");
+      }
+      updateModeControls();
+    }
     chat.think = /^qwen3(?::|$)/i.test(chat.model) && elements.thinking.value === "on";
     chat.permission_mode = elements.permission.value || "manual";
     const agentMode = chat.mode === "agent";
@@ -2337,20 +2408,9 @@
     setStreaming(true);
     assistant.progress = chat.mode === "agent"
       ? "Starting the coding agent"
-      : `Tuning the signal for “${progressSubject(displayContent) || "your request"}”…`;
+      : progressStagesForPrompt(displayContent)[0];
     let waitingProgressStage = 0;
-    const waitingProgressTopic = progressSubject(displayContent);
-    const waitingProgressStages = waitingProgressTopic
-      ? [
-        `Finding the shape of “${waitingProgressTopic}”…`,
-        `Connecting the useful details…`,
-        `Polishing the last edges…`,
-      ]
-      : [
-        "Finding the shape of your answer…",
-        "Connecting the useful details…",
-        "Polishing the last edges…",
-      ];
+    const waitingProgressStages = progressStagesForPrompt(displayContent);
     let waitingProgressTimer = null;
     const stopWaitingProgress = () => {
       if (waitingProgressTimer !== null) {
@@ -2360,10 +2420,7 @@
     };
     if (!agentMode) {
       waitingProgressTimer = setInterval(() => {
-        waitingProgressStage = Math.min(
-          waitingProgressStage + 1,
-          waitingProgressStages.length - 1,
-        );
+        waitingProgressStage = (waitingProgressStage + 1) % waitingProgressStages.length;
         assistant.progress = waitingProgressStages[waitingProgressStage];
         scheduleStreamingRender(assistant, chat.id);
       }, 5000);

@@ -2,6 +2,7 @@ import unittest
 import base64
 import io
 import json
+import os
 import http.client
 import http.client
 import threading
@@ -1466,11 +1467,48 @@ class AgentStatusTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertFalse(web_server.app._reply_needs_continuation(text, "stop"))
 
+    def test_default_workspace_is_separate_and_selected_workspace_persists(self):
+        with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as root:
+            default_root = web_server._default_workspace_root(home)
+            self.assertEqual(
+                default_root,
+                str(Path(home) / "Documents" / "Midnight Signal Workspace"),
+            )
+            self.assertNotEqual(
+                os.path.realpath(default_root),
+                os.path.realpath(web_server.app.SCRIPT_DIR),
+            )
+
+            settings_path = str(Path(home) / "config" / "workspace.json")
+            missing_settings = str(Path(home) / "config" / "missing.json")
+            self.assertEqual(
+                web_server._load_workspace_root(missing_settings, home),
+                default_root,
+            )
+            web_server._persist_workspace_root(root, settings_path)
+            self.assertEqual(web_server._load_workspace_root(settings_path), root)
+
+    def test_server_startup_creates_the_configured_workspace(self):
+        with tempfile.TemporaryDirectory() as home:
+            workspace = Path(web_server._default_workspace_root(home))
+            with patch.object(web_server, "_workspace_root", str(workspace)), \
+                    patch("web_server.ThreadingHTTPServer") as server_factory, \
+                    patch("web_server.threading.Timer"), \
+                    patch("web_server.webbrowser.open"), \
+                    patch("web_server._stop_mobile_access"):
+                server = server_factory.return_value
+                server.server_port = 8770
+                server.serve_forever.side_effect = KeyboardInterrupt
+                web_server.serve()
+            self.assertTrue(workspace.is_dir())
+
     def test_workspace_api_rejects_cross_site_requests_and_accepts_local_choice(self):
         server = web_server.ThreadingHTTPServer(("127.0.0.1", 0), web_server.MidnightSignalHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         original_root = web_server._workspace_root
+        persist_patcher = patch("web_server._persist_workspace_root")
+        persist_workspace = persist_patcher.start()
         url = f"http://127.0.0.1:{server.server_port}/api/workspace"
         try:
             request = urllib.request.Request(
@@ -1501,8 +1539,10 @@ class AgentStatusTests(unittest.TestCase):
                 with urllib.request.urlopen(request) as response:
                     self.assertEqual(json.loads(response.read())["workspace"], root)
                 self.assertEqual(web_server._workspace_root, root)
+                persist_workspace.assert_called_once_with(root)
         finally:
             web_server._workspace_root = original_root
+            persist_patcher.stop()
             server.shutdown()
             server.server_close()
             thread.join(timeout=3)

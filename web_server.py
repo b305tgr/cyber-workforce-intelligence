@@ -234,7 +234,69 @@ _pending_confirmations = {}
 _confirmation_lock = threading.Lock()
 _model_capability_cache = {}
 _model_capability_lock = threading.Lock()
-_workspace_root = app.SCRIPT_DIR
+_WORKSPACE_DIRECTORY_NAME = "Midnight Signal Workspace"
+
+
+def _default_workspace_root(home=None):
+    return os.path.join(
+        os.path.abspath(home or os.path.expanduser("~")),
+        "Documents",
+        _WORKSPACE_DIRECTORY_NAME,
+    )
+
+
+def _workspace_settings_path():
+    config_root = (
+        os.environ.get("APPDATA")
+        or os.environ.get("XDG_CONFIG_HOME")
+        or os.path.join(os.path.expanduser("~"), ".config")
+    )
+    return os.path.join(config_root, "MidnightSignal", "workspace.json")
+
+
+def _load_workspace_root(settings_path=None, home=None):
+    default_root = _default_workspace_root(home)
+    settings_path = settings_path or _workspace_settings_path()
+    try:
+        with open(settings_path, "r", encoding="utf-8") as settings_file:
+            configured_root = json.load(settings_file).get("workspace")
+    except FileNotFoundError:
+        return default_root
+    except (OSError, json.JSONDecodeError, AttributeError) as error:
+        _logger.warning("Could not read workspace settings at %s: %s", settings_path, error)
+        return default_root
+    if isinstance(configured_root, str) and os.path.isabs(configured_root):
+        resolved_root = os.path.realpath(configured_root)
+        if os.path.isdir(resolved_root):
+            return resolved_root
+    _logger.warning(
+        "Configured workspace in %s is not an existing absolute directory; using the default",
+        settings_path,
+    )
+    return default_root
+
+
+def _persist_workspace_root(workspace, settings_path=None):
+    settings_path = settings_path or _workspace_settings_path()
+    settings_dir = os.path.dirname(settings_path)
+    os.makedirs(settings_dir, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix="workspace-", suffix=".tmp", dir=settings_dir
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as settings_file:
+            json.dump({"workspace": workspace}, settings_file)
+            settings_file.write("\n")
+        os.replace(temporary_path, settings_path)
+    except OSError:
+        try:
+            os.unlink(temporary_path)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+_workspace_root = _load_workspace_root()
 _workspace_lock = threading.Lock()
 _mobile_server = None
 _mobile_server_lock = threading.Lock()
@@ -1526,6 +1588,12 @@ class MidnightSignalHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "Workspace must be an existing local directory"})
             return
         with _workspace_lock:
+            try:
+                _persist_workspace_root(path)
+            except OSError as error:
+                _logger.exception("Could not save workspace selection %s", path)
+                self._send_json(500, {"error": f"Could not save workspace selection: {error}"})
+                return
             _workspace_root = path
         self._send_json(200, {"workspace": path})
 
@@ -1947,11 +2015,15 @@ def serve(host: str = "127.0.0.1", port: int = 8765, allow_lan: bool = False):
         host = "0.0.0.0"
     elif host not in ("127.0.0.1", "localhost", "::1"):
         raise ValueError("The web interface must only bind to localhost unless LAN access is enabled")
+    with _workspace_lock:
+        os.makedirs(_workspace_root, exist_ok=True)
+        workspace = _workspace_root
     server = ThreadingHTTPServer((host, port), MidnightSignalHandler)
     server.allow_lan = allow_lan
     server.access_token = secrets.token_urlsafe(24) if allow_lan else ""
     local_url = f"http://127.0.0.1:{server.server_port}/"
     print(f"Midnight Signal web interface: {local_url}")
+    print(f"Workspace: {workspace}")
     if allow_lan:
         addresses = _private_lan_addresses()
         if addresses:

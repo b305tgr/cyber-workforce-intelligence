@@ -75,6 +75,12 @@ unverified work.
   than exposing a model-waiting message; the Studio empty chat now has its own
   compact animated intro and animated progress indicator, separate from the
   public homepage.
+- **COMPLETE** — Studio uses light neutral chat surfaces with orange retained
+  as an accent. Progress copy adapts to website, document, code, and general
+  requests; orbit, ripple, and signal animations respect reduced-motion settings.
+- **COMPLETE** — The default agent workspace is
+  `Documents\Midnight Signal Workspace`, outside the application repository.
+  Folder choices made in Studio are saved per user and restored after restart.
 - **COMPLETE** — Show generated HTML pages in a sandboxed chat preview, provide
   a verified workspace-scoped HTML download, and retain ZIP downloads when
   requested.
@@ -102,11 +108,11 @@ unverified work.
 
 ### Implemented so far
 
-- Major Studio visual refresh: warm orange/copper accent system, espresso
-  sidebar, redesigned split hero, clearer prompt-card hierarchy, refined
-  composer, and coordinated settings surfaces. The public Home/About/Contact
-  pages use the same warm orange palette. Browser geometry checks found no
-  horizontal overflow at 320, 390, or 1440px.
+- Major Studio visual refresh: light neutral chat and settings surfaces,
+  orange/copper accents, espresso sidebar, redesigned split hero, clearer
+  prompt-card hierarchy, refined composer, and animated, task-aware progress.
+  The public Home/About/Contact pages retain their coordinated warm palette.
+  Browser geometry checks found no horizontal overflow at 320, 390, or 1440px.
 - Browser app foundations also include custom keyboard-operable mode/model
   pickers, sampling and appearance settings, themes, command palette and slash
   commands, responsive styling, and font loading with system fallbacks.
@@ -158,7 +164,9 @@ unverified work.
   excluded from the tool-intent retry path, and regression cases cover common
   website/HTML question phrases. Continue expanding this coverage when new
   misclassifications are reported.
-- The Coding agent can inspect a workspace, review Git changes, make approved
+- The default workspace is separate from the application directory; custom
+  workspace selections are persisted in the per-user Midnight Signal config.
+  The Coding agent can inspect a workspace, review Git changes, make approved
   file changes, and package explicitly selected project files into a
   workspace-scoped downloadable ZIP. Successfully generated PDF/DOCX
   documents are verified inside the selected workspace and surfaced as chat
