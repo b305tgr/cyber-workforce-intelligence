@@ -15,7 +15,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-top">
         <a class="brand" href="/" aria-label="Midnight Signal home">
-          <span class="brand-mark"><span></span></span>
+          <span class="brand-mark"><img src="/assets/midnight-signal-logo.png" alt=""></span>
           <span class="brand-name">midnight<span>signal</span></span>
         </a>
         <button class="icon-button sidebar-collapse" id="collapse-sidebar" aria-label="Collapse sidebar" title="Collapse sidebar">
@@ -34,9 +34,11 @@
       <label class="history-filter"><span>Show</span><select id="history-filter" aria-label="Filter conversations"><option value="active">Active</option><option value="pinned">Pinned</option><option value="archived">Archived</option><option value="all">All chats</option></select></label>
       <nav class="conversation-list" id="conversation-list" aria-label="Recent conversations"></nav>
 
-      <nav class="sidebar-site-links" aria-label="Project information">
-        <a href="/about">About Midnight Signal</a>
-        <a href="/contact">Contact &amp; feedback</a>
+      <nav class="sidebar-site-links" aria-label="Public website">
+        <span class="sidebar-site-heading">PUBLIC WEBSITE</span>
+        <a href="/">Home page <span aria-hidden="true">↗</span></a>
+        <a href="/about">About <span aria-hidden="true">↗</span></a>
+        <a href="/contact">Contact <span aria-hidden="true">↗</span></a>
       </nav>
       <div class="sidebar-bottom">
         <div class="local-status"><span class="status-dot"></span><span id="server-status">Connecting to local model...</span></div>
@@ -200,8 +202,17 @@
         <div><span class="eyebrow">PREFERENCES</span><h2 id="settings-title">Settings</h2></div>
         <button class="icon-button" id="close-settings" type="button" aria-label="Close settings">×</button>
       </header>
+      <nav class="settings-nav" id="settings-nav" aria-label="Settings sections">
+        <a href="#settings-model">Model</a>
+        <a href="#settings-appearance">Appearance</a>
+        <a href="#settings-sound">Sound</a>
+        <a href="#settings-agent">Agent</a>
+        <a href="#settings-tools">External tools</a>
+        <a href="#settings-advanced">Advanced</a>
+      </nav>
       <form id="settings-form">
-        <section class="settings-section">
+        <div class="settings-body">
+        <section class="settings-section" id="settings-model">
           <h3>Model &amp; sampling</h3>
           <p>These controls apply to new chats and the selected conversation.</p>
           <div class="settings-grid">
@@ -213,7 +224,7 @@
             <label>Reply tokens<input name="num_predict" type="number" min="-1" max="32768" step="1" aria-describedby="reply-help"><small id="reply-help" class="settings-field-help">Maximum response length; use -1 for model maximum.</small></label>
           </div>
         </section>
-        <section class="settings-section">
+        <section class="settings-section" id="settings-appearance">
           <h3>Appearance</h3>
           <label class="settings-row">Theme
             <select name="theme">
@@ -230,12 +241,12 @@
             </select>
           </label>
         </section>
-        <section class="settings-section">
+        <section class="settings-section" id="settings-sound">
           <h3>Sound</h3>
           <label class="settings-row"><span>Interface sounds</span><input name="sound" type="checkbox"></label>
           <label class="settings-row">Volume<input name="volume" type="range" min="0" max="100" step="1"><output id="sound-volume"></output></label>
         </section>
-        <section class="settings-section">
+        <section class="settings-section" id="settings-agent">
           <h3>Agent defaults</h3>
           <p>Choose how workspace actions are approved in new conversations.</p>
           <label class="settings-row">Default approval mode
@@ -246,7 +257,7 @@
             </select>
           </label>
         </section>
-        <section class="settings-section">
+        <section class="settings-section" id="settings-tools">
           <h3>External tools · MCP</h3>
           <p>Connect local Model Context Protocol servers. Their tools can access data outside the selected workspace. Configure only servers you trust; calls ask for approval unless you explicitly choose Allow all.</p>
           <div class="settings-mcp-status" id="settings-mcp-status" role="status" aria-live="polite">Checking MCP configuration…</div>
@@ -267,11 +278,12 @@
             <small>Save this JSON to the path above, then restart the Studio server. MCP commands run as local subprocesses; Midnight Signal never installs or enables a server automatically.</small>
           </details>
         </section>
-        <section class="settings-section">
+        <section class="settings-section" id="settings-advanced">
           <h3>Advanced</h3>
           <label class="settings-row"><span>Start with sidebar collapsed</span><input name="sidebar_collapsed" type="checkbox"></label>
           <button class="settings-secondary" id="export-history" type="button">Export all conversations</button>
         </section>
+        </div>
         <footer class="settings-footer">
           <button class="settings-secondary" id="reset-settings" type="button">Reset defaults</button>
           <button class="settings-save" type="submit">Save settings</button>

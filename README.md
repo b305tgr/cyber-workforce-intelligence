@@ -29,12 +29,94 @@ inspects git — with confirmation prompts and an optional "yolo" mode.
 
 **Base model:** `huihui_ai/qwen2.5-coder-abliterate:7b`
 
-## Project handoff and roadmap — 2026-10-20
+## Project handoff and roadmap — 2026-10-22 (updated 17:11 +05:30)
 
-This section is the current project handoff. Read it before changing code,
-preserve existing user work, and update this section and its checklist when
-work is completed. The roadmap is **not complete**; do not skip tests or claim
-unverified work.
+This is the current, authoritative handoff. Read **Resume here first** before
+continuing work. The verification notes farther down are historical unless
+explicitly repeated in the current status below. Preserve existing user work;
+update this handoff whenever implementation or verification changes. The
+roadmap is **not complete**.
+
+### Resume here first
+
+**Current request:** finish a comprehensive Midnight Signal product/site
+polish and keep the README useful as a next-session handoff. The user asked
+for implementation without clarification; do not upload or publish anything
+unless asked.
+
+**Current worktree and Git state (checked 2026-10-22):**
+
+- Branch: `main`, at `dacb75ce5750fc86a013f9acde01615ba1890c92`
+  (`Upload current site and project files`).
+- `main` tracks `origin/main` and is two commits ahead of it. The configured
+  `origin` is `17413-maker/MIDNIGHTSIGNAL`; a prior push to that repository was
+  denied for insufficient permission.
+- The earlier `dacb75c` revision was successfully pushed to
+  `b305tgr/cyber-workforce-intelligence` on branch
+  `midnight-signal-upload`. That upload does **not** include the current
+  product-polish changes.
+- The current product-polish changes are **uncommitted** in nine files:
+  `README.md`, `agent.py`, `system_prompts/agent.txt`,
+  `tests/test_agent_tools.py`, `tests/test_web_server.py`, `web/app.css`,
+  `web/app.js`, `web/index.html`, and `web_server.py`. Do not discard or
+  overwrite them. No commit or push was made for this work.
+
+**Implemented in the current uncommitted work:**
+
+- Separate public Home/About/Contact navigation from the Studio workspace;
+  align the Studio logo with the public PNG brand.
+- Improve the Settings drawer and controls, add section jump links, and keep
+  its Save/Reset actions visible outside the independently scrolling settings
+  content. Existing saved defaults of 8,192 context / 2,048 reply tokens are
+  migrated to 16,384 / 4,096; other saved custom values are preserved.
+- Improve the preferred coding-agent model order, friendly task progress
+  wording, website preview/download presentation, and website ZIP delivery.
+  Website ZIPs remain workspace-scoped and must pass validation before
+  completion is reported.
+- Update the system prompt, regression tests, and product checklist.
+
+**Verification completed for this work:**
+
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests -p test_agent_tools.py`
+  — 72 passed.
+- `.\.venv\Scripts\python.exe -m unittest discover -s tests -p test_web_server.py`
+  — 46 passed.
+- `node --check web\app.js`, Python compilation of `agent.py` and
+  `web_server.py`, and `git diff --check` passed.
+- Browser checks on a fresh local server at port 8771 verified Studio loads,
+  public-site links are present, Settings section navigation scrolls to the
+  selected section, and the footer remains visible on desktop and at 390px
+  mobile width. A browser check confirmed the legacy token defaults migrate
+  to 16,384 / 4,096.
+- Full suite run on 2026-10-23:
+  `.\.venv\Scripts\python.exe -m unittest discover -s tests -v` —
+  **161 tests passed, 1 skipped**.
+- The Playwright test runner did not discover these Python `unittest` files;
+  use the documented `unittest` commands for Python regression coverage.
+
+**Still open / do not claim complete:**
+
+1. Run the full Python suite (`.\.venv\Scripts\python.exe -m unittest
+   discover -s tests -v`) after the latest changes; record the exact result.
+2. Run a fresh live Qwen 2.5 full-stack website-generation trial from a clean,
+   isolated workspace. Previous Qwen 2.5 trials failed to create all requested
+   backend/test/ZIP deliverables; the bounded completion checks correctly
+   reported the missing work. Verify actual backend behavior and run generated
+   project tests; file presence and static validation alone are insufficient.
+3. Broader accessibility review and physical-phone testing remain outstanding.
+   Physical-phone access previously required a trusted/private Wi-Fi profile
+   and a Private-network-only firewall allowance. Do not change machine or
+   firewall settings without authorization, and preserve localhost-only as the
+   default.
+4. Review `git diff`, preserve this work, and only commit/push if the user
+   explicitly requests it. The current `origin` push was previously denied;
+   do not silently publish to the alternate repository.
+
+**Recommended first actions next session:** check `git status --short
+--branch`; read this section; inspect the current diff in the listed files;
+run the full Python test command; then continue with the isolated Qwen 2.5
+full-stack trial. Do not redo the verified Settings/browser work unless new
+changes affect it.
 
 ### Product and architecture context
 
@@ -69,8 +151,15 @@ unverified work.
   separate pages; `/studio` opens directly into the chat workspace, without
   embedding a duplicate public homepage or marketing welcome screen. Phone-
   access redirects open Studio directly.
+- **COMPLETE** — Studio labels Home, About, and Contact as public-site links
+  that navigate to separate pages. Studio branding uses the same local PNG
+  logo as the public website.
 - **COMPLETE** — DeepSeek and EmbeddingGemma are hidden from the chat model
   picker. This does not uninstall or modify any model in Ollama.
+- **COMPLETE** — Coding-agent model recommendations prefer
+  `midnight-signal:latest`, then an installed Qwen 2.5 coder, before the other
+  tool-capable models. New browser chats default to 16,384 context tokens and
+  4,096 reply tokens; users can change either value in Settings.
 - **COMPLETE** — Agent progress uses concise, task-focused status copy rather
   than exposing a model-waiting message; the Studio empty chat now has its own
   compact animated intro and animated progress indicator, separate from the
@@ -81,9 +170,14 @@ unverified work.
 - **COMPLETE** — The default agent workspace is
   `Documents\Midnight Signal Workspace`, outside the application repository.
   Folder choices made in Studio are saved per user and restored after restart.
-- **COMPLETE** — Show generated HTML pages in a sandboxed chat preview, provide
-  a verified workspace-scoped HTML download, and retain ZIP downloads when
-  requested.
+- **COMPLETE** — Open generated HTML pages in a sandboxed chat preview, provide
+  a verified workspace-scoped HTML download, and create a validated,
+  workspace-scoped ZIP for every website build.
+- **COMPLETE** — Explicit website-creation requests from General Chat route
+  through Coding agent, so they create real workspace files. Website builds
+  suppress model-authored plans/source from the chat stream; file activity is
+  labeled with the real target (for example, “Writing index.html”), and the
+  completion message requires a verified HTML file.
 - **COMPLETE** — Surface successfully generated PDF and DOCX files as
   workspace-scoped download links in the chat.
 - **COMPLETE** — Use local `embeddinggemma` for document retrieval when
@@ -91,20 +185,25 @@ unverified work.
   back to keyword search. The selected generative model authors document
   content because embedding models cannot write prose or produce DOCX/PDF
   files.
-- **COMPLETE** — Improve settings with clearer sampling help, reliable scrolling,
-  and accessible MCP configuration and warning status. Desktop settings content
-  is browser-verified; the broader mobile/accessibility review remains open.
+- **COMPLETE** — Improve settings with clearer sampling help, section jump links,
+  responsive controls, a non-overlapping persistent action bar, reliable
+  scrolling, and accessible MCP configuration and warning status. Browser
+  checks verified section navigation and desktop/mobile footer visibility;
+  broader accessibility review remains open. Existing saved default token
+  values migrate to the new defaults without replacing custom values.
 - **COMPLETE** — Add opt-in stdio MCP client support through the official
   Python SDK. Configured MCP calls require existing user approval; no external
   server is enabled by default.
 - **IN PROGRESS** — The local Qwen 2.5 full-stack trial still does not complete.
-  The Epson website trial created `index.html`, CSS, and JavaScript, but the
-  HTML contained an escaped script URL and omitted the mobile viewport; the
-  model stopped before repairing either issue, and no backend, tests, or ZIP
-  were produced. Safe local repairs for those exact validation findings now
-  have regression coverage, but the live Qwen trial has not yet been rerun.
-  In a separate Epson trial, `midnight-signal:latest` generated the site files
-  and passed `validate_website` with no issues.
+  The latest isolated Qwen 2.5 full-stack run created `index.html`, CSS,
+  JavaScript, a test file, and a README, but stopped after bounded completion
+  attempts without creating `server.py` or a ZIP. Validation also found a
+  missing mobile viewport, missing semantic `main`/`nav` regions, and a
+  malformed local script reference. Safe local repairs for related markup
+  findings and the missing-backend completion guard have regression coverage,
+  but this live full-stack trial remains incomplete. In a separate Epson
+  trial, `midnight-signal:latest` generated the site files and passed
+  `validate_website` with no issues.
 
 ### Implemented so far
 
@@ -117,8 +216,9 @@ unverified work.
   pickers, sampling and appearance settings, themes, command palette and slash
   commands, responsive styling, and font loading with system fallbacks.
 - The Settings drawer explains the sampling controls, keeps its sticky action
-  bar from obscuring the last options, and reports MCP configuration state.
-  Keyboard and mobile layout checks are recorded in the latest validation.
+  bar outside the scrollable options so it cannot obscure them, offers section
+  jump links, and reports MCP configuration state. Desktop and 390px mobile
+  browser checks verified section navigation and footer visibility.
 - Optional local MCP integration uses the official `mcp` Python SDK over
   stdio. Configure trusted servers in the path shown under
   **Settings → External tools · MCP** using a JSON object shaped like:
@@ -164,6 +264,11 @@ unverified work.
   excluded from the tool-intent retry path, and regression cases cover common
   website/HTML question phrases. Continue expanding this coverage when new
   misclassifications are reported.
+- Explicit website builds from General Chat automatically use Coding agent
+  rather than returning simulated `write_file` JSON as prose. Model-authored
+  preambles and source snippets are hidden during website execution; the
+  interface reports real file tool activity and only confirms a verified
+  generated HTML file.
 - The default workspace is separate from the application directory; custom
   workspace selections are persisted in the per-user Midnight Signal config.
   The Coding agent can inspect a workspace, review Git changes, make approved
@@ -171,10 +276,11 @@ unverified work.
   workspace-scoped downloadable ZIP. Successfully generated PDF/DOCX
   documents are verified inside the selected workspace and surfaced as chat
   downloads. Website instructions call for complete, runnable results,
-  validation, and ZIP packaging when a multi-file project is appropriate.
-  Generated HTML files can also be previewed inside chat in a sandboxed
-  frame; the workspace path is restricted, and the preview CSP blocks network
-  connections and form submission.
+validation, and ZIP packaging for every website build. Generated HTML files
+open as sandboxed chat previews and can also be downloaded as individual files.
+The preview runs inside a sandboxed
+frame; the workspace path is restricted, and the preview CSP blocks network
+connections and form submission.
 - Scanned PDFs can be OCR'd locally with PyMuPDF and RapidOCR (up to 50
   image-only pages per PDF); selectable text continues to use `pypdf`.
   Attachment excerpts are indexed in memory per conversation and retrieved
@@ -234,7 +340,7 @@ unverified work.
   access still needs to be checked after the Windows network/firewall settings
   are corrected.
 
-### Earlier verification baseline
+### Historical verification baseline (superseded by Resume here first)
 
 - Python suite: **129 tests passed, 1 skipped** (`.venv\Scripts\python.exe -m
   unittest discover -s tests -v`).
@@ -285,7 +391,11 @@ unverified work.
   firewall on Private networks. A full mobile-device and accessibility audit
   has not been completed.
 
-### Completed after the handoff
+### Historical implementation and verification log
+
+The entries below preserve useful implementation history. Their test counts,
+model results, and environment observations are snapshots from earlier work;
+use **Resume here first** above for the current worktree and latest checks.
 
 - Rechecked workspace intent filtering and defensive tool dispatch together.
   New regression tests cover questions, explanations, web lookup, website

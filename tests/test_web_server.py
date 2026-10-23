@@ -77,6 +77,9 @@ class AgentStatusTests(unittest.TestCase):
                         self.assertIn(b'id="prompt-input"', body)
                         self.assertIn(b"What are we working on?", body)
                         self.assertIn(b'id="studio-empty-state"', body)
+                        self.assertIn(b'aria-label="Public website"', body)
+                        self.assertIn(b'href="/">Home page', body)
+                        self.assertIn(b'id="settings-nav"', body)
                         self.assertNotIn(b"Big ideas,", body)
                         self.assertNotIn(b'id="welcome"', body)
                     elif path in {"/", "/home"}:
@@ -113,6 +116,10 @@ class AgentStatusTests(unittest.TestCase):
             self.assertEqual(
                 payload["models"],
                 ["huihui_ai/qwen2.5-coder-abliterate:7b", "qwen3:14b"],
+            )
+            self.assertEqual(
+                payload["recommended_agent_model"],
+                "huihui_ai/qwen2.5-coder-abliterate:7b",
             )
         finally:
             server.shutdown()

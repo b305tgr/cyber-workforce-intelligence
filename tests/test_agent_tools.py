@@ -18,6 +18,26 @@ import tools
 
 
 class AgentFileToolTests(unittest.TestCase):
+    @staticmethod
+    def run_website_tool(name, args, root, *_):
+        if name == "package_project":
+            archive_path = Path(root, args["path"])
+            archive_path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                for relative_path in args["files"]:
+                    archive.write(Path(root, relative_path), relative_path)
+            return f"Project archive ready: {args['path']}"
+
+        relative_path = (
+            "index.html"
+            if name in {"create_website_entry", "repair_website_entry"}
+            else args["path"]
+        )
+        output_path = Path(root, relative_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(args["content"], encoding="utf-8")
+        return f"wrote {relative_path}"
+
     def test_full_stack_completion_requires_named_files_backend_tests_and_readme(self):
         self.assertTrue(agent._looks_like_website_request(
             "Build a full-stack Python reservation app with an HTML frontend and index.html."
@@ -554,6 +574,7 @@ document.querySelector('.favorite-button').addEventListener('click', event => {
                         ),
                     }}]),
                     iter([{"message": {"content": "The website is ready."}}]),
+                    iter([{"message": {"content": "The website is ready."}}]),
                 ]
                 with patch(
                     "agent._chat_stream", side_effect=responses
@@ -571,6 +592,7 @@ document.querySelector('.favorite-button').addEventListener('click', event => {
                             },
                         ],
                         root,
+                        yolo=True,
                     ))
                 output = Path(root, "index.html")
                 self.assertTrue(output.is_file())
@@ -615,18 +637,12 @@ document.querySelector('.favorite-button').addEventListener('click', event => {
             iter([asset_call]),
             iter([asset_call]),
             iter([{"message": {"content": "The website is ready."}}]),
+            iter([{"message": {"content": "The website is ready."}}]),
         ]
-
-        def write_file(name, args, root, *_):
-            path = "index.html" if name == "create_website_entry" else args["path"]
-            full_path = Path(root, path)
-            full_path.parent.mkdir(parents=True, exist_ok=True)
-            full_path.write_text(args["content"], encoding="utf-8")
-            return f"wrote {path}"
 
         with tempfile.TemporaryDirectory() as root, patch(
             "agent._chat_stream", side_effect=responses
-        ), patch("agent._run_tool", side_effect=write_file) as run_tool, patch(
+        ), patch("agent._run_tool", side_effect=self.run_website_tool) as run_tool, patch(
             "agent.tool_impl.validate_website", return_value=[]
         ):
             events = list(agent.run_agent(
@@ -641,7 +657,7 @@ document.querySelector('.favorite-button').addEventListener('click', event => {
                 root,
             ))
 
-        self.assertEqual(run_tool.call_count, 2)
+        self.assertEqual(run_tool.call_count, 3)
         duplicate_result = next(
             event for event in events
             if event.kind == "tool_result"
@@ -1054,6 +1070,60 @@ content="width=device-width, initial-scale=1"></head><body>
         )
         self.assertIn("generate_document", agent.TOOL_DISPATCH)
 
+    def test_website_tool_preambles_are_not_streamed_as_chat_or_progress(self):
+        page = """<!doctype html><html lang="en"><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bicycle World</title><style>
+@media (max-width: 700px) { body { padding: 1rem; } }
+</style></head><body><header><nav><a href="#bikes">Bikes</a></nav></header>
+<main id="bikes"><h1>Bicycle World</h1><p>Ride farther, every day.</p></main>
+<footer>Visit us today.</footer></body></html>"""
+        preamble = (
+            "Sure! I'll create a simple website about bicycles. "
+            "Here's the plan: first create index.html."
+        )
+        tool_turn = [{
+            "message": {
+                "content": preamble,
+                "tool_calls": [{
+                    "function": {
+                        "name": "write_file",
+                        "arguments": {"path": "index.html", "content": page},
+                    }
+                }],
+            }
+        }]
+        final_turn = [{"message": {"content": "The website is ready."}}]
+
+        with tempfile.TemporaryDirectory() as root, patch(
+            "agent._chat_stream",
+            side_effect=[iter(tool_turn), iter(final_turn), iter(final_turn)],
+        ), patch("agent._run_tool", side_effect=self.run_website_tool), patch(
+            "agent.tool_impl.validate_website", return_value=[]
+        ):
+            events = list(agent.run_agent(
+                "qwen3:14b",
+                [
+                    {"role": "system", "content": "system"},
+                    {"role": "user", "content": "Create a bicycle website."},
+                ],
+                root,
+            ))
+
+        self.assertFalse(any(
+            event.kind in {"progress_note", "response_token"}
+            and any(
+                phrase in event.data.get("text", "")
+                for phrase in ("Sure!", "Here's the plan")
+            )
+            for event in events
+        ))
+        self.assertTrue(any(
+            event.kind == "tool_call" and event.data.get("name") == "write_file"
+            for event in events
+        ))
+        self.assertTrue(any(event.kind == "final" for event in events))
+
     def test_empty_simple_website_starts_with_only_the_file_creation_tool(self):
         def tool_call(name, args):
             return {"message": {"tool_calls": [{
@@ -1071,11 +1141,12 @@ content="width=device-width, initial-scale=1"></head><body>
                 "</style></body></html>",
             })]),
             iter([{"message": {"content": "The site is ready."}}]),
+            iter([{"message": {"content": "The site is ready."}}]),
         ]
         with tempfile.TemporaryDirectory() as root, patch(
             "agent._chat_stream", side_effect=responses
         ) as chat_stream, patch(
-            "agent._run_tool", return_value="file written"
+            "agent._run_tool", side_effect=self.run_website_tool
         ) as run_tool, patch(
             "agent.tool_impl.validate_website", return_value=[]
         ):
@@ -1087,19 +1158,20 @@ content="width=device-width, initial-scale=1"></head><body>
                 ],
                 root,
             ))
-
-        self.assertEqual(run_tool.call_count, 1)
-        for call in chat_stream.call_args_list[:2]:
-            self.assertEqual(
-                [item["function"]["name"] for item in call.args[2]],
-                ["write_file"],
-            )
-        self.assertTrue(any(
-            event.kind == "tool_result"
-            and "not available for the current workspace step" in event.data["result"]
-            for event in events
-        ))
-        self.assertTrue(any(event.kind == "final" for event in events))
+            self.assertEqual(run_tool.call_count, 2)
+            for call in chat_stream.call_args_list[:2]:
+                self.assertEqual(
+                    [item["function"]["name"] for item in call.args[2]],
+                    ["write_file"],
+                )
+            self.assertTrue(any(
+                event.kind == "tool_result"
+                and "not available for the current workspace step" in event.data["result"]
+                for event in events
+            ))
+            self.assertTrue(any(event.kind == "final" for event in events))
+            with zipfile.ZipFile(Path(root, "downloads/website.zip")) as archive:
+                self.assertEqual(archive.namelist(), ["index.html"])
 
     def test_target_models_get_a_fixed_homepage_tool_for_blank_websites(self):
         page = """<!doctype html><html lang="en"><head>
@@ -1117,6 +1189,7 @@ content="width=device-width, initial-scale=1"></head><body>
             responses = [
                 iter([response]),
                 iter([{"message": {"content": "The site is ready."}}]),
+                iter([{"message": {"content": "The site is ready."}}]),
             ]
             with self.subTest(model=model), tempfile.TemporaryDirectory() as root, patch(
                 "agent._chat_stream", side_effect=responses
@@ -1128,6 +1201,7 @@ content="width=device-width, initial-scale=1"></head><body>
                         {"role": "user", "content": "Build a night-sky website."},
                     ],
                     root,
+                    yolo=True,
                 ))
                 self.assertEqual(
                     chat_stream.call_args_list[0].args[2][0]["function"]["name"],
@@ -1845,24 +1919,33 @@ content="width=device-width, initial-scale=1"></head><body>
                 "content": "@media (max-width: 700px) { body { padding: 1rem; } }",
             })]),
             iter([{"message": {"content": "The website is complete."}}]),
+            iter([{"message": {"content": "The website is complete."}}]),
         ]
-        with patch("agent._chat_stream", side_effect=responses), patch(
-            "agent._run_tool", return_value="file written"
+        with tempfile.TemporaryDirectory() as root, patch(
+            "agent._chat_stream", side_effect=responses
+        ), patch(
+            "agent._run_tool", side_effect=self.run_website_tool
         ) as run_tool, patch(
             "agent.tool_impl.validate_website",
-            side_effect=[["missing local asset 'styles.css' referenced by index.html"], []],
+            side_effect=[
+                ["missing local asset 'styles.css' referenced by index.html"],
+                [],
+                [],
+            ],
         ) as validate_website:
+            Path(root, "existing.txt").write_text("keep", encoding="utf-8")
             events = list(agent.run_agent(
                 "huihui_ai/qwen2.5-coder-abliterate:7b",
                 [
                     {"role": "system", "content": "system"},
                     {"role": "user", "content": "Build a coffee shop website."},
                 ],
-                ".",
+                root,
+                yolo=True,
             ))
 
-        self.assertEqual(run_tool.call_count, 2)
-        self.assertEqual(validate_website.call_count, 2)
+        self.assertEqual(run_tool.call_count, 3)
+        self.assertEqual(validate_website.call_count, 3)
         self.assertTrue(any(
             event.kind == "progress_note" and "repair" in event.data["text"]
             for event in events
@@ -1886,13 +1969,8 @@ content="width=device-width, initial-scale=1"></head><body>
             iter([tool_call("tests/test_server.py", "import unittest")]),
             iter([tool_call("README.md", "Run the server with Python.")]),
             iter([{"message": {"content": "The full-stack project is complete."}}]),
+            iter([{"message": {"content": "The full-stack project is complete."}}]),
         ]
-
-        def write_file(_name, args, root, *_):
-            path = Path(root, args["path"])
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(args["content"], encoding="utf-8")
-            return f"wrote {args['path']}"
 
         def validate_completed_project(root):
             for path in ("server.py", "tests/test_server.py", "README.md"):
@@ -1902,7 +1980,7 @@ content="width=device-width, initial-scale=1"></head><body>
         with tempfile.TemporaryDirectory() as root, patch(
             "agent._chat_stream", side_effect=responses
         ) as chat_stream, patch(
-            "agent._run_tool", side_effect=write_file
+            "agent._run_tool", side_effect=self.run_website_tool
         ) as run_tool, patch(
             "agent.tool_impl.validate_website",
             side_effect=validate_completed_project,
@@ -1923,10 +2001,11 @@ content="width=device-width, initial-scale=1"></head><body>
                     },
                 ],
                 root,
+                yolo=True,
             ))
 
-        self.assertEqual(run_tool.call_count, 5)
-        self.assertEqual(chat_stream.call_count, 7)
+        self.assertEqual(run_tool.call_count, 6)
+        self.assertEqual(chat_stream.call_count, 8)
         self.assertTrue(any(
             event.kind == "progress_note"
             and "missing deliverables" in event.data["text"]

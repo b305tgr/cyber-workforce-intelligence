@@ -50,8 +50,9 @@
     ".css", ".yml", ".yaml", ".toml", ".xml", ".sql", ".sh", ".ps1",
   ]);
   const LOCAL_HISTORY_LIMIT = 4 * 1024 * 1024;
-  const DEFAULT_OPTIONS = { temperature: 0.7, top_p: 0.9, top_k: 40, repeat_penalty: 1.1, num_ctx: 8192, num_predict: 2048 };
+  const DEFAULT_OPTIONS = { temperature: 0.7, top_p: 0.9, top_k: 40, repeat_penalty: 1.1, num_ctx: 16384, num_predict: 4096 };
   const DEFAULT_PREFERENCES = {
+    version: 2,
     options: { ...DEFAULT_OPTIONS },
     theme: "light",
     sound: false,
@@ -123,8 +124,13 @@
           options[key] = value;
         }
       }
+      if (!Number.isInteger(saved.version) || saved.version < 2) {
+        if (Number(saved.options?.num_ctx) === 8192) options.num_ctx = DEFAULT_OPTIONS.num_ctx;
+        if (Number(saved.options?.num_predict) === 2048) options.num_predict = DEFAULT_OPTIONS.num_predict;
+      }
       const themes = ["light", "dark", "high-contrast", "sunset", "ember", "cyber", "matrix", "ice", "noir", "auto"];
       return {
+        version: 2,
         options,
         theme: themes.includes(saved.theme) ? saved.theme : DEFAULT_PREFERENCES.theme,
         sound: saved.sound === true,
@@ -1563,7 +1569,10 @@
         ? `/api/file-download?path=${encodeURIComponent(item.path)}`
         : `/api/download?path=${encodeURIComponent(item.path)}`;
       link.download = item.name;
-      link.textContent = `Download ${item.name}`;
+      const kind = item.type === "zip"
+        ? "project ZIP"
+        : item.type === "website" ? "HTML file" : "document";
+      link.textContent = `Download ${kind} · ${item.name}`;
       list.append(link);
     });
     container.append(list);
@@ -1586,10 +1595,14 @@
       .map((segment) => encodeURIComponent(segment))
       .join("/")}`;
     preview.addEventListener("toggle", () => {
-      if (preview.open && !frame.hasAttribute("src")) frame.src = frame.dataset.previewSrc;
+      if (preview.open && !streaming && !frame.hasAttribute("src")) {
+        frame.src = frame.dataset.previewSrc;
+      }
     });
     preview.append(summary, frame);
+    preview.open = true;
     container.append(preview);
+    if (!streaming) frame.src = frame.dataset.previewSrc;
   }
 
   function progressForTool(name) {
@@ -1605,7 +1618,7 @@
   function userFacingProgress(text) {
     const phase = String(text || "").trim();
     if (/waiting for the model(?:['’]s)? first response/i.test(phase)) {
-      return "Finding a clear path through your question…";
+      return "Tuning the signal and sketching your next steps…";
     }
     if (/generating a user-facing update/i.test(phase)) {
       return "Bringing the useful details into focus…";
@@ -1653,9 +1666,11 @@
   }
 
   function isWebsiteBuildRequest(prompt) {
-    return /\b(?:build|create|make|generate|develop|design|write|code)\b[\s\S]{0,120}\b(?:website|web\s+site|webpage|web\s+page|landing\s+page|site)\b/i.test(
-      String(prompt || ""),
-    );
+    const request = String(prompt || "").trim();
+    if (/^(?:how\b|explain\b|what is\b|why\b|when\b|where\b|tell me about\b|tell me how\b|guide me through\b)/i.test(request)) {
+      return false;
+    }
+    return /\b(?:build|create|make|generate|develop|design|write|code)\b[\s\S]{0,120}\b(?:website|web\s+site|webpage|web\s+page|landing\s+page|site)\b/i.test(request);
   }
 
   function progressMotionFor(text) {
@@ -2375,11 +2390,12 @@
       updateMessageEditBanner();
       renderAttachments();
     }
+    const websiteBuild = isWebsiteBuildRequest(displayContent);
     chat.mode = elements.mode.value || "default";
     chat.model = elements.model.value || appStatus.model;
     if (
       chat.mode !== "agent"
-      && isWebsiteBuildRequest(displayContent)
+      && websiteBuild
       && appStatus.modes.includes("agent")
     ) {
       chat.mode = "agent";
@@ -2403,6 +2419,7 @@
     chat.options = { ...preferences.options, ...(chat.options || {}) };
     appendMessage(chat, "user", displayContent, { attachments: attachmentMetadata });
     const assistant = { role: "assistant", content: "" };
+    assistant.websiteBuild = websiteBuild && agentMode;
     chat.messages.push(assistant);
     requestController = new AbortController();
     setStreaming(true);
@@ -2488,9 +2505,11 @@
           const event = parseStreamEvent(line);
           stopWaitingProgress();
           if (event.type === "token") {
-            assistant.progress = "";
-            assistant.content += event.text;
-            scheduleStreamingRender(assistant, chat.id);
+            if (!assistant.websiteBuild) {
+              assistant.progress = "";
+              assistant.content += event.text;
+              scheduleStreamingRender(assistant, chat.id);
+            }
           } else if (event.type === "replace") {
             assistant.progress = "";
             assistant.content = event.text;
@@ -2636,6 +2655,13 @@
           } else if (event.type === "done") {
             playUiSound("done");
             assistant.progress = "";
+            if (assistant.websiteBuild && !assistant.content.trim()) {
+              const websiteReady = assistant.downloads?.some((item) => item.type === "website");
+              assistant.content = websiteReady
+                ? "Your website is ready. Preview it here or open index.html in your workspace."
+                : "No verified website file was created. Review the tool results and try again.";
+              assistant.error = !websiteReady;
+            }
             gotDone = true;
           }
         }
@@ -2652,9 +2678,11 @@
           scheduleStreamingRender(assistant, chat.id);
         }
         if (event.type === "token") {
-          assistant.progress = "";
-          assistant.content += event.text;
-          scheduleStreamingRender(assistant, chat.id);
+          if (!assistant.websiteBuild) {
+            assistant.progress = "";
+            assistant.content += event.text;
+            scheduleStreamingRender(assistant, chat.id);
+          }
         }
         if (event.type === "replace") {
           assistant.progress = "";

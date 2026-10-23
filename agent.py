@@ -79,7 +79,7 @@ _WEBSITE_REPAIR_NUDGE = (
     "with write_file instead. Issues: "
 )
 _WEBSITE_ARCHIVE_NUDGE = (
-    "The website passed validation, but the requested ZIP has not been created. "
+    "The website passed validation, but its ZIP has not been created. "
     "Call package_project now with exactly the website's entry point, every required local asset/page, "
     "and the concise README. Preserve their relative paths and do not include unrelated workspace files."
 )
@@ -87,8 +87,8 @@ _QWEN25_WEBSITE_ENTRY_SYSTEM = (
     "You are building a complete website or web app. Use create_website_entry now "
     "to write the full index.html entry page. Match the requested scope: a short "
     "static-site request can be a polished single page, but a request for a large, "
-    "multi-page, or full-stack product must have substantial real sections/pages and "
-    "an architecture appropriate to the requested stack. Make every requested control "
+    "multi-page, or full-stack product must have substantial real sections/pages, "
+    "working user flows, and an architecture appropriate to the requested stack. Make every requested control "
     "work; search must filter results, favorites must toggle, and forms must perform "
     "their requested actions. For every additional page, stylesheet, script, data, "
     "server, test, or setup file the project needs, include the correct relative links "
@@ -1523,11 +1523,13 @@ def run_agent(
     tool_intent_requested = bool(
         _looks_like_tool_intent(user_text) and not attachment_question
     )
+    website_tool_request = bool(
+        tool_intent_requested and _looks_like_website_request(user_text)
+    )
 
     empty_website_workspace = False
     website_archive_required = bool(
         _looks_like_website_request(user_text)
-        and re.search(r"\b(?:zip|archive)\b", user_text, re.IGNORECASE)
     )
     document_formats = {
         value.casefold()
@@ -1756,7 +1758,7 @@ def run_agent(
                         if not website_source_started:
                             words = list(re.finditer(r"\S+", response_text))
                             safe_end = words[-12].start() if len(words) > 12 else 0
-                            if safe_end > response_chars_sent:
+                            if safe_end > response_chars_sent and not website_tool_request:
                                 yield AgentEvent(
                                     "response_token",
                                     text=response_text[response_chars_sent:safe_end],
@@ -1833,6 +1835,7 @@ def run_agent(
             if (
                 not tool_calls
                 and not response_blocked
+                and not website_tool_request
                 and partial_text
                 and not security.leaks_internal_text(
                     partial_text, system_prompt, tool_schema_text
@@ -2236,7 +2239,7 @@ def run_agent(
             yield AgentEvent("response_clear")
 
         progress_note = msg.get("content", "").strip()
-        if progress_note:
+        if progress_note and not _looks_like_website_request(user_text):
             yield AgentEvent("progress_note", text=progress_note[:1200])
 
         # Record the assistant's tool-call turn in the running message list

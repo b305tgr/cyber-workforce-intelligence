@@ -890,10 +890,22 @@ class MidnightSignalHandler(BaseHTTPRequestHandler):
             with _workspace_lock:
                 workspace = _workspace_root
             recommended_agent_model = next(
-                (name for name in agent_models if name.lower() == "qwen3:14b"),
+                (name for name in agent_models if name.lower().startswith("midnight-signal")),
                 next(
-                    (name for name in agent_models if "coder" in name.lower() and "14b" in name.lower()),
-                    next((name for name in agent_models if name.lower().startswith("midnight-signal")), agent_models[0] if agent_models else ""),
+                    (
+                        name for name in agent_models
+                        if "qwen2.5" in name.lower() and "coder" in name.lower()
+                    ),
+                    next(
+                        (name for name in agent_models if name.lower() == "qwen3:14b"),
+                        next(
+                            (
+                                name for name in agent_models
+                                if "coder" in name.lower() and "14b" in name.lower()
+                            ),
+                            agent_models[0] if agent_models else "",
+                        ),
+                    ),
                 ),
             )
             default_model = next(
